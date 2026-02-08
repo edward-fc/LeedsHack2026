@@ -151,11 +151,23 @@ def build_graph():
                 if geom_metric.intersects(cp['geometry']):
                     intersected_cps.append(cp['name'])
             
+            # Snap the geometry endpoints to the nodes
+            # This ensures visually connected lines in the frontend
+            snapped_coords = list(geom.coords)
+            
+            u_data = G.nodes[u]
+            v_data = G.nodes[v]
+            
+            # Replace start point
+            snapped_coords[0] = (u_data['lon'], u_data['lat'])
+            # Replace end point
+            snapped_coords[-1] = (v_data['lon'], v_data['lat'])
+
             edge_data = {
                 "source": u,
                 "target": v,
                 "dist_km": dist_km,
-                "geometry": list(geom.coords),
+                "geometry": snapped_coords,
                 "chokepoints": intersected_cps,
                 "lane_id": str(idx)
             }
