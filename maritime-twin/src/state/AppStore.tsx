@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { GraphIndex } from '../domain/graph/GraphIndex';
 import { DijkstraRouter } from '../domain/routing/Dijkstra';
 import { SimulationTimeline } from '../domain/simulation/timeline';
-import { getPointAlongRoute } from '../utils/geo';
+import { getPointAlongRoute, getRouteLengthKm } from '../utils/geo';
 import { RouteResult, WeatherConfig } from '../domain/types';
 
 interface AppState {
@@ -138,12 +138,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const speedKmH = 40.74; // 22 knots
         const stepHours = 1; // Playback step size
         const intervalMs = 7; // Faster update for smooth playback
-        const totalHours = route.totalDist / speedKmH;
+        const routeLengthKm = getRouteLengthKm(route.segments);
+        const totalHours = routeLengthKm / speedKmH;
 
         const interval = setInterval(() => {
             setPlaybackHours(prev => {
+                if (!Number.isFinite(totalHours) || totalHours <= 0) {
+                    setShipPosition(null);
+                    return 0;
+                }
+
                 const next = prev + stepHours;
-                const wrapped = next > totalHours ? 0 : next;
+                const wrapped = next >= totalHours ? next % totalHours : next;
 
                 // Calculate position
                 const distTravelled = wrapped * speedKmH;
