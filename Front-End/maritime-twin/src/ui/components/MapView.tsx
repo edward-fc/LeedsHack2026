@@ -19,6 +19,7 @@ export function MapView() {
         setSelectionMode,
         setOriginId,
         setDestId,
+        setHoveredChokepoint,
         route // Extract route from store
     } = useAppStore();
 
@@ -188,11 +189,13 @@ export function MapView() {
     // Refs to keep latest handlers available to MapLibre listeners without cleanup/rebind overhead
     const onPortClickRef = useRef(onPortClick);
     const onChokepointClickRef = useRef(onChokepointClick);
+    const setHoveredChokepointRef = useRef(setHoveredChokepoint);
 
     useEffect(() => {
         onPortClickRef.current = onPortClick;
         onChokepointClickRef.current = onChokepointClick;
-    }, [onPortClick, onChokepointClick]);
+        setHoveredChokepointRef.current = setHoveredChokepoint;
+    }, [onPortClick, onChokepointClick, setHoveredChokepoint]);
 
     useEffect(() => {
         if (map.current) return;
@@ -513,13 +516,33 @@ export function MapView() {
                 }
             });
 
+            const handleChokepointHover = (e: maplibregl.MapLayerMouseEvent) => {
+                m.getCanvas().style.cursor = 'pointer';
+                const name = e.features?.[0]?.properties?.name as string | undefined;
+                if (name) {
+                    setHoveredChokepointRef.current(name);
+                }
+            };
+
+            const clearChokepointHover = () => {
+                m.getCanvas().style.cursor = '';
+                setHoveredChokepointRef.current(null);
+            };
+
             m.on('click', 'chokepoints-marker', (e) => {
                 if (e.features && e.features[0].properties) {
                     onChokepointClickRef.current(e.features[0].properties.name);
                 }
             });
-            m.on('mouseenter', 'chokepoints-marker', () => { m.getCanvas().style.cursor = 'pointer'; });
-            m.on('mouseleave', 'chokepoints-marker', () => { m.getCanvas().style.cursor = ''; });
+            m.on('click', 'chokepoints-layer', (e) => {
+                if (e.features && e.features[0].properties) {
+                    onChokepointClickRef.current(e.features[0].properties.name);
+                }
+            });
+            m.on('mouseenter', 'chokepoints-marker', handleChokepointHover);
+            m.on('mouseleave', 'chokepoints-marker', clearChokepointHover);
+            m.on('mouseenter', 'chokepoints-layer', handleChokepointHover);
+            m.on('mouseleave', 'chokepoints-layer', clearChokepointHover);
         }
 
         // Clean up old route layer if it exists

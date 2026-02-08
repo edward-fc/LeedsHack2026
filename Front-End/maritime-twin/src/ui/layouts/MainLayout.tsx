@@ -6,7 +6,7 @@ import { GeminiGarbage } from '../components/GeminiGarbage';
 import { Loader2 } from 'lucide-react';
 
 export function MainLayout() {
-    const { isGraphLoaded } = useAppStore();
+    const { isGraphLoaded, hoveredChokepoint } = useAppStore();
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-slate-900">
@@ -18,7 +18,7 @@ export function MainLayout() {
             {/* UI Overlays */}
             <ControlPanel />
             <WeatherControls />
-            <GeminiGarbage />
+            <GeminiGarbage hoveredChokepoint={hoveredChokepoint} />
 
             {/* Loading State */}
             {!isGraphLoaded && (

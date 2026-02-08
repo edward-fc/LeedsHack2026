@@ -2,13 +2,40 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { requestGeminiFast } from '../../utils/gemini';
+import chokepointMessages from '../../utils/chokepointMessages.json';
 
-export function GeminiGarbage() {
+const chokepointMessageMap = chokepointMessages as Record<string, string[]>;
+
+type GeminiGarbageProps = {
+    hoveredChokepoint?: string | null;
+};
+
+type HoverBubbleProps = {
+    message: string;
+    bottom: string;
+};
+
+function HoverBubble({ message, bottom }: HoverBubbleProps) {
+    return (
+        <div
+            className="absolute right-0 w-64 max-w-[calc(100vw-2rem)]"
+            style={{ bottom, zIndex: 30 }}
+        >
+            <div className="relative rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-lg backdrop-blur">
+                {message}
+                <span className="absolute -bottom-2 right-5 h-3 w-3 rotate-45 border border-slate-200 bg-white/95" />
+            </div>
+        </div>
+    );
+}
+
+export function GeminiGarbage({ hoveredChokepoint = null }: GeminiGarbageProps) {
     const [open, setOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [answer, setAnswer] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hoverMessage, setHoverMessage] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -16,6 +43,22 @@ export function GeminiGarbage() {
             inputRef.current?.focus();
         }
     }, [open]);
+
+    useEffect(() => {
+        if (!hoveredChokepoint) {
+            setHoverMessage(null);
+            return;
+        }
+
+        const options = chokepointMessageMap[hoveredChokepoint] || [];
+        if (options.length === 0) {
+            setHoverMessage(null);
+            return;
+        }
+
+        const index = Math.floor(Math.random() * options.length);
+        setHoverMessage(options[index]);
+    }, [hoveredChokepoint]);
 
     const submitPrompt = async () => {
         const trimmed = prompt.trim();
@@ -43,8 +86,14 @@ export function GeminiGarbage() {
         }
     };
 
+    const bubbleBottom = open ? 'calc(100% + 12px)' : '64px';
+
     return (
-        <div className="absolute bottom-4 right-4 z-20">
+        <div
+            className="relative"
+            style={{ position: "fixed", bottom: 16, right: 16, zIndex: 20 }}
+        >
+            {hoverMessage && <HoverBubble message={hoverMessage} bottom={bubbleBottom} />}
             {open && (
                 <div className="mb-3 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md">
                     <div className="flex items-center justify-between">
