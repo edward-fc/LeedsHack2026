@@ -50,11 +50,37 @@ export class DijkstraRouter {
                     }
                 }
                 path.push(this.graph.nodes[startNodeId]);
+                const orderedPath = path.reverse();
+                const orderedEdges = edges.reverse();
+
+                // Construct full geometry
+                const geometry: [number, number][] = [];
+                for (let i = 0; i < orderedEdges.length; i++) {
+                    const edge = orderedEdges[i];
+                    const sourceNode = orderedPath[i];
+
+                    // Determine orientation
+                    // If we differ from edge.source, we assume we are traversing backward (Target -> Source)
+                    // Note: This assumes edge.geometry is ordered Source -> Target.
+                    let segment = edge.geometry;
+                    if (sourceNode.id === edge.target) {
+                        segment = [...edge.geometry].reverse();
+                    }
+
+                    if (i === 0) {
+                        geometry.push(...segment);
+                    } else {
+                        // Avoid duplicating connection points
+                        geometry.push(...segment.slice(1));
+                    }
+                }
+
                 return {
-                    pathNodeIds: path.reverse().map(n => n.id),
-                    edges: edges.reverse(),
+                    pathNodeIds: orderedPath.map(n => n.id),
+                    edges: orderedEdges,
                     totalDist: currentDist,
-                    segments: edges.map(e => e.geometry)
+                    segments: orderedEdges.map(e => e.geometry),
+                    geometry: geometry
                 };
             }
 

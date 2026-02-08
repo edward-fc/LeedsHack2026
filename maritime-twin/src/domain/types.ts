@@ -51,6 +51,7 @@ export interface RouteResult {
     edges: Edge[];
     totalDist: number;
     segments: [number, number][][];
+    geometry: [number, number][]; // Full ordered linestring
 }
 
 export interface SimulationState {

@@ -241,6 +241,75 @@ def build_graph():
             new_edges_count += 1
             
     logging.info(f"Connected {new_edges_count} dead ends.")
+    
+    # --- Connect International Date Line (Pacific Crossing) ---
+    logging.info("Connecting International Date Line nodes...")
+    dateline_nodes = []
+    for n, d in G.nodes(data=True):
+        if abs(d['lon']) > 175.0: # Filter nodes near the edge
+            dateline_nodes.append((n, d['lat'], d['lon']))
+            
+    logging.info(f"Found {len(dateline_nodes)} candidate nodes near dateline (>175 deg).")
+    if dateline_nodes:
+        lons = [n[2] for n in dateline_nodes]
+        logging.info(f"Dateline Node Longitude Range: Min {min(lons):.4f}, Max {max(lons):.4f}")
+    
+    dateline_edges_count = 0
+    DATELINE_SEARCH_RADIUS_KM = 500.0 
+    
+    # We want to connect each node to its CLOSEST neighbor on the other side
+    # to avoid messy "mesh" connections or vertical jumps.
+    
+    start_nodes = [n for n in dateline_nodes if n[2] > 0] # East (approx +180)
+    end_nodes = [n for n in dateline_nodes if n[2] < 0]   # West (approx -180)
+    
+    # process nodes from positive side looking for close negative side match
+    # (and vice versa? actually since it's an undirected graph, iterating one set against the other is enough)
+    
+    # Let's iterate ALL dateline nodes and find their best match on the OTHER side.
+    
+    for u, u_lat, u_lon in dateline_nodes:
+        best_v = None
+        min_dist_km = float('inf')
+        
+        # Determine "other side" sign
+        target_sign = -1 if u_lon > 0 else 1
+        
+        for v, v_lat, v_lon in dateline_nodes:
+            if u == v: continue
+            
+            # Check if on opposite side
+            # If target_sign is -1, we look for negative v_lon
+            # If target_sign is 1, we look for positive v_lon
+            if (v_lon < 0 and target_sign == -1) or (v_lon > 0 and target_sign == 1):
+                # Calculate wrapping distance
+                d_lat_km = abs(u_lat - v_lat) * 111.0
+                
+                lon_diff = abs(u_lon - v_lon)
+                d_lon_wrapped_deg = 360.0 - lon_diff
+                avg_lat_rad = math.radians((u_lat + v_lat) / 2)
+                d_lon_km = d_lon_wrapped_deg * 111.0 * math.cos(avg_lat_rad)
+                
+                dist_km = math.sqrt(d_lat_km**2 + d_lon_km**2)
+                
+                if dist_km < min_dist_km:
+                    min_dist_km = dist_km
+                    best_v = v
+                    best_v_lon = v_lon
+                    best_v_lat = v_lat
+        
+        # If the closest matching node is within range, connect it
+        if best_v and min_dist_km < 2000.0: # Increased from 500 to 2000 km
+            # Check edge existence? NetworkX handles duplicates if we calculate same weight
+            # But better to avoid duplicated effort.
+            if not G.has_edge(u, best_v):
+               G.add_edge(u, best_v, weight=min_dist_km, dist_km=min_dist_km, 
+                          geometry=[(u_lon, u_lat), (best_v_lon, best_v_lat)],
+                          lane_id=f"dateline_{u}_{best_v}",
+                          type="dateline")
+               dateline_edges_count += 1
+
+    logging.info(f"Connected {dateline_edges_count} pairs across the International Date Line.")
     node_points = []
     node_ids_list = []
     for n, d in G.nodes(data=True):

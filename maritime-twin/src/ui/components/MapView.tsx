@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAppStore } from '../../state/AppStore';
 import { useWeatherLayer } from '../../map/hooks/useWeatherLayer';
+import { unwrapAntimeridian } from '../../utils/geo';
 
 export function MapView() {
     const {
@@ -17,7 +18,8 @@ export function MapView() {
         selectionMode,
         setSelectionMode,
         setOriginId,
-        setDestId
+        setDestId,
+        route // Extract route from store
     } = useAppStore();
 
     const mapContainer = useRef<HTMLDivElement>(null);
@@ -26,6 +28,145 @@ export function MapView() {
 
     // Weather Layer Hook
     useWeatherLayer(map.current, weatherConfig);
+
+    // Update Data Sources (Lanes, Ports, Route)
+    useEffect(() => {
+        if (!loaded || !map.current || !graph) return;
+        const m = map.current;
+
+        // 1. Lanes Source
+        const adjEdges = Object.values(graph.adjList).flat();
+        const laneFeatures = adjEdges.flatMap((edge, i) => {
+            const geometry = edge.geometry;
+
+            if (geometry && geometry.length === 2) {
+                const [p1, p2] = geometry;
+                const lon1 = p1[0];
+                const lon2 = p2[0];
+                const lat1 = p1[1];
+                const lat2 = p2[1];
+
+                if (Math.abs(lon2 - lon1) > 180) {
+                    // Dateline crossing
+                    // Construct East-side version and West-side version
+
+                    let eastP1 = [lon1, lat1];
+                    let eastP2 = [lon2, lat2];
+                    let westP1 = [lon1, lat1];
+                    let westP2 = [lon2, lat2];
+
+                    if (lon1 > 0 && lon2 < 0) {
+                        // East -> West (e.g. 179 -> -179)
+                        // East ver: 179 -> 181 ((-179)+360)
+                        eastP2 = [lon2 + 360, lat2];
+                        // West ver: -181 ((179)-360) -> -179
+                        westP1 = [lon1 - 360, lat1];
+                    } else if (lon1 < 0 && lon2 > 0) {
+                        // West -> East (e.g. -179 -> 179)
+                        // East ver: 181 ((-179)+360) -> 179
+                        // Wait, 181 -> 179 is just normal. 
+                        // Target is 179. Source is -179.
+                        // East ver: (-179 + 360) -> 179 => 181 -> 179.
+                        eastP1 = [lon1 + 360, lat1];
+
+                        // West ver: -179 -> -181 ((179)-360).
+                        westP2 = [lon2 - 360, lat2];
+                    }
+
+                    // Create two features
+                    const props = {
+                        id: String(i),
+                        lane_id: edge.lane_id,
+                        disabled: graph.isEdgeDisabled(edge),
+                        isPath: pathEdgeIds.has(edge.lane_id)
+                    };
+
+                    return [
+                        { type: 'Feature', geometry: { type: 'LineString', coordinates: [eastP1, eastP2] }, properties: { ...props, wrap: 'east' } },
+                        { type: 'Feature', geometry: { type: 'LineString', coordinates: [westP1, westP2] }, properties: { ...props, wrap: 'west' } }
+                    ];
+                }
+            }
+
+            // Normal Edge
+            return [{
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: geometry },
+                properties: {
+                    id: String(i),
+                    lane_id: edge.lane_id,
+                    disabled: graph.isEdgeDisabled(edge),
+                    isPath: pathEdgeIds.has(edge.lane_id),
+                    wrap: 'none'
+                }
+            }];
+        });
+
+        const lanesGeoJSON = { type: 'FeatureCollection', features: laneFeatures };
+        if (m.getSource('lanes')) {
+            (m.getSource('lanes') as maplibregl.GeoJSONSource).setData(lanesGeoJSON as any);
+        }
+
+        // 2. Ports Source
+        const portFeatures = Object.values(graph.ports).map(port => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [port.lon, port.lat] },
+            properties: {
+                id: port.id,
+                name: port.name,
+                isOrigin: port.id === originId,
+                isDest: port.id === destId,
+                disabled: graph.disabledPorts.has(port.id)
+            }
+        }));
+        if (m.getSource('ports')) {
+            (m.getSource('ports') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: portFeatures } as any);
+        }
+
+        // 3. Chokepoints Source
+        const chokeFeatures = Object.values(graph.chokepoints).map(cp => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [cp.lon, cp.lat] },
+            properties: {
+                name: cp.name,
+                disabled: graph.disabledChokepoints.has(cp.name)
+            }
+        }));
+        if (m.getSource('chokepoints')) {
+            (m.getSource('chokepoints') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: chokeFeatures } as any);
+        }
+
+        // 4. Route Layer (Continuous Unwrapped Line)
+        if (route && route.geometry) {
+            const unwrappedGeometry = unwrapAntimeridian(route.geometry);
+            const routeGeoJSON = {
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: unwrappedGeometry },
+                properties: {}
+            };
+
+            if (m.getSource('route')) {
+                (m.getSource('route') as maplibregl.GeoJSONSource).setData(routeGeoJSON as any);
+            } else {
+                m.addSource('route', { type: 'geojson', data: routeGeoJSON as any });
+                m.addLayer({
+                    id: 'route-layer',
+                    type: 'line',
+                    source: 'route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#00bfff', // Bright Blue
+                        'line-width': 5,
+                        'line-opacity': 0.8
+                    }
+                }, 'ship-layer');
+            }
+        } else {
+            if (m.getLayer('route-layer')) m.removeLayer('route-layer');
+            if (m.getSource('route')) m.removeSource('route');
+        }
+
+    }, [loaded, graph, pathEdgeIds, originId, destId, graph?.disabledPorts, graph?.disabledChokepoints, route]);
 
     // Handlers
     const onPortClick = (portId: string) => {
@@ -132,19 +273,77 @@ export function MapView() {
         const m = map.current;
 
         // 1. Lanes Source
-        const laneFeatures = Object.values(graph.adjList).flat().map((edge, i) => ({
-            type: 'Feature',
-            geometry: {
-                type: 'LineString',
-                coordinates: edge.geometry
-            },
-            properties: {
-                id: i,
-                lane_id: edge.lane_id, // Ensure this matches ID in edge
-                disabled: graph.isEdgeDisabled(edge),
-                isPath: pathEdgeIds.has(edge.lane_id)
+        const laneFeatures = Object.values(graph.adjList).flat().flatMap((edge, i) => {
+            const originalCoordinates = edge.geometry;
+            const features = [];
+
+            if (originalCoordinates && originalCoordinates.length === 2) {
+                const [p1, p2] = originalCoordinates;
+                const lon1 = p1[0];
+                const lon2 = p2[0];
+
+                if (Math.abs(lon2 - lon1) > 180) {
+                    // DATELINE CROSSING DETECTED
+                    // We need to render TWO lines to cover both sides of the map (World -1 and World 0/1 boundary).
+
+                    // 1. Right-side wrapping (e.g., 179 -> 181)
+                    // If going West->East (179 -> -179): 179 -> 181
+                    // If going East->West (-179 -> 179): 181 -> 179
+                    const rightP1: [number, number] = [p1[0], p1[1]];
+                    const rightP2: [number, number] = [p2[0], p2[1]];
+
+                    if (lon1 > 0 && lon2 < 0) { rightP2[0] += 360; }
+                    else if (lon1 < 0 && lon2 > 0) { rightP1[0] += 360; }
+
+                    features.push({
+                        type: 'Feature',
+                        geometry: { type: 'LineString', coordinates: [rightP1, rightP2] },
+                        properties: {
+                            id: `${i}-right`,
+                            lane_id: edge.lane_id,
+                            disabled: graph.isEdgeDisabled(edge),
+                            isPath: pathEdgeIds.has(edge.lane_id)
+                        }
+                    });
+
+                    // 2. Left-side wrapping (e.g., -181 -> -179)
+                    // If going West->East (179 -> -179): -181 -> -179
+                    const leftP1: [number, number] = [p1[0], p1[1]];
+                    const leftP2: [number, number] = [p2[0], p2[1]];
+
+                    if (lon1 > 0 && lon2 < 0) { leftP1[0] -= 360; }
+                    else if (lon1 < 0 && lon2 > 0) { leftP2[0] -= 360; }
+
+                    features.push({
+                        type: 'Feature',
+                        geometry: { type: 'LineString', coordinates: [leftP1, leftP2] },
+                        properties: {
+                            id: `${i}-left`,
+                            lane_id: edge.lane_id,
+                            disabled: graph.isEdgeDisabled(edge),
+                            isPath: pathEdgeIds.has(edge.lane_id)
+                        }
+                    });
+
+                    return features;
+                }
             }
-        }));
+
+            // Normal Edge
+            return [{
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: edge.geometry
+                },
+                properties: {
+                    id: String(i),
+                    lane_id: edge.lane_id,
+                    disabled: graph.isEdgeDisabled(edge),
+                    isPath: pathEdgeIds.has(edge.lane_id)
+                }
+            }];
+        });
 
         // Deduplicate edges?
         // Using Map as unique set by geometry string might be heavy. Just render.

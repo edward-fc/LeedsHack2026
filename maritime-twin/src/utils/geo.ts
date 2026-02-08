@@ -50,7 +50,26 @@ export function getPointAlongRoute(segments: [number, number][][], distanceKm: n
                 const ratio = remaining / segDist;
 
                 const lat = p1[1] + (p2[1] - p1[1]) * ratio;
-                const lon = p1[0] + (p2[0] - p1[0]) * ratio;
+
+                // Handle Longitude Wrapping for Interpolation
+                let lon1 = p1[0];
+                let lon2 = p2[0];
+
+                // If crossing dateline (gap > 180), wrap one coordinate
+                if (Math.abs(lon2 - lon1) > 180) {
+                    if (lon2 > lon1) {
+                        lon1 += 360;
+                    } else {
+                        lon2 += 360;
+                    }
+                }
+
+                let lon = lon1 + (lon2 - lon1) * ratio;
+
+                // Normalize longitude back to -180 to 180
+                while (lon > 180) lon -= 360;
+                while (lon < -180) lon += 360;
+
                 return [lon, lat];
             }
 
@@ -61,4 +80,38 @@ export function getPointAlongRoute(segments: [number, number][][], distanceKm: n
     // If we ran out of segments, return destination (last point of last segment)
     const lastSeg = segments[segments.length - 1];
     return lastSeg[lastSeg.length - 1];
+}
+
+/**
+ * Unwraps longitude coordinates to allow continuous rendering across the antimeridian.
+ * 
+ * @param coords Array of [lon, lat] coordinates
+ * @returns New array of [lon, lat] with longitudes unwrapped.
+ */
+export function unwrapAntimeridian(coords: [number, number][]): [number, number][] {
+    if (coords.length === 0) return [];
+
+    const result: [number, number][] = [coords[0]];
+
+    for (let i = 1; i < coords.length; i++) {
+        const prev = result[i - 1];
+        const current = coords[i];
+
+        let lon = current[0];
+        const lat = current[1];
+        const prevLon = prev[0];
+
+        const delta = lon - prevLon;
+
+        // If we jumped more than 180 degrees, we likely crossed the dateline.
+        if (delta > 180) {
+            lon -= 360;
+        } else if (delta < -180) {
+            lon += 360;
+        }
+
+        result.push([lon, lat]);
+    }
+
+    return result;
 }
