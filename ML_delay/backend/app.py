@@ -72,20 +72,33 @@ def predict_delay(input_data: PredictionInput):
         # Feature Engineering (Reuse pipeline logic)
         df = model_pipeline.phase_2_feature_engineering(df)
         
-        # Align features
-        for col in feature_names:
-            if col not in df.columns:
-                df[col] = 0
-        df_final = df[feature_names]
+        # Align features (Ensure exact order and all model features are present)
+        df_final = df.reindex(columns=feature_names, fill_value=0)
+        
+        # Ensure numeric types (XGBoost requires this)
+        df_final = df_final.apply(pd.to_numeric, errors='coerce').fillna(0)
+        
+        # Debug: Check structure
+        print(f"--- Debug Prediction ---")
+        print(f"Input Type: {type(df_final)}")
+        print(f"Input Shape: {df_final.shape}")
+        print(f"Input Columns (28): {df_final.columns.tolist() == feature_names}")
+        print(f"Input Dtypes: \n{df_final.dtypes.head()}")
+        
+        if hasattr(clf_model, "feature_names_in_"):
+             print(f"Model Feature Names In: {clf_model.feature_names_in_[:5]}...")
         
         # Predict Class (Is Delayed?)
-        prob_delay = clf_model.predict_proba(df_final)[0][1]
+        # Use .values to bypass XGBoost's strict feature name validation which is failing
+        prob_delay = clf_model.predict_proba(df_final.values)[0][1]
         
         # Predict Hours (How Long?)
         predicted_hours = 0.0
         if prob_delay >= 0.3: # Threshold
-             predicted_hours = reg_model.predict(df_final)[0]
+             predicted_hours = reg_model.predict(df_final.values)[0]
              predicted_hours = max(0.0, predicted_hours)
+             
+        print(f"Prediction Complete: Prob={prob_delay:.2f}, Hours={predicted_hours:.2f}")
              
         # Risk Logic
         if predicted_hours < 48.0:
@@ -103,6 +116,9 @@ def predict_delay(input_data: PredictionInput):
         }
 
     except Exception as e:
+        import traceback
+        print(f"Prediction Error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
