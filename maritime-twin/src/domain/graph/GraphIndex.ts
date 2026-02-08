@@ -1,4 +1,5 @@
 import { Node, Edge, Port, Chokepoint, GraphData } from '../types';
+import { addDatelineBridges } from './dateline';
 
 export class GraphIndex {
     nodes: Record<string, Node> = {};
@@ -33,6 +34,9 @@ export class GraphIndex {
                 this.adjList[edge.target].push(edge);
             });
         }
+
+        // 3. Stitch Dateline
+        addDatelineBridges(this.nodes, this.adjList);
     }
 
     togglePort(portId: string) {

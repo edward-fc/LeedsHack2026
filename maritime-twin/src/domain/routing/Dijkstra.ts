@@ -2,6 +2,7 @@ import { PriorityQueue } from './PriorityQueue';
 import { GraphIndex } from '../graph/GraphIndex';
 import { Node, Edge, RouteResult } from '../types';
 import { stitchRouteSegments } from '../../utils/geo';
+import { heuristic } from '../graph/dateline';
 
 export class DijkstraRouter {
     graph: GraphIndex;
@@ -76,7 +77,13 @@ export class DijkstraRouter {
                 if (newDist < (distances[neighborId] || Infinity)) {
                     distances[neighborId] = newDist;
                     previous[neighborId] = { node: innerCurrentNodeId, edge: edge };
-                    pq.enqueue(neighborId, newDist);
+
+                    // A* Heuristic
+                    const neighborNode = this.graph.nodes[neighborId];
+                    const endNode = this.graph.nodes[endNodeId];
+                    const h = heuristic(neighborNode, endNode);
+
+                    pq.enqueue(neighborId, newDist + h);
                 }
             }
         }
