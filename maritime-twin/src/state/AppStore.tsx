@@ -171,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const pos = getPointAlongRoute(route.segments, dist);
             setShipPosition(pos);
         }
-    }, [isPlayback, route]); // run once on entry or when route changes while playing
+    }, [isPlayback, route, playbackHours]); // keep playback position in sync
 
     // Refined Implementation of combined loop
     // This block is now redundant due to the separate effects above.
@@ -181,7 +181,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Actions
     const togglePlayback = () => {
         if (!isPlayback) {
-            setPlaybackHours(0);
+            if (route && startDate) {
+                const now = Date.now();
+                const start = new Date(startDate).getTime();
+                const elapsedHours = Math.max(0, (now - start) / (1000 * 60 * 60));
+                const routeLengthKm = getRouteLengthKm(route.segments);
+                const totalHours = routeLengthKm / 40.74;
+                const wrapped = totalHours > 0 ? elapsedHours % totalHours : 0;
+                setPlaybackHours(wrapped);
+            } else {
+                setPlaybackHours(0);
+            }
         }
         setIsPlayback(prev => !prev);
     };
