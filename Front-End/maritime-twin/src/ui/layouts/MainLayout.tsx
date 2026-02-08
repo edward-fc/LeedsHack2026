@@ -2,6 +2,7 @@ import { useAppStore } from '../../state/AppStore';
 import { ControlPanel } from '../components/ControlPanel';
 import { MapView } from '../components/MapView';
 import { WeatherControls } from '../components/WeatherControls';
+import { GeminiGarbage } from '../components/GeminiGarbage';
 import { DelayControls } from '../components/DelayControls';
 import { SuezDelayControls } from '../components/SuezDelayControls';
 import { usePanamaWeather } from '../../map/hooks/usePanamaWeather';
@@ -27,6 +28,7 @@ export function MainLayout() {
                 <DelayControls weather={weather} onPredictionChange={setPanamaCanalDelay} />
                 <SuezDelayControls onPredictionChange={setSuezCanalDelay} />
             </div>
+            <GeminiGarbage />
 
             {/* Loading State */}
             {!isGraphLoaded && (
