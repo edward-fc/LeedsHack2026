@@ -1,0 +1,61 @@
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.env
+.venv/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json # Only ignore if using yarn, but user seems to be using npm (npm run dev). Actually, usually we commit package-lock.json. I will keep it.
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated Data (Optional - uncomment if you don't want to track these)
+# *.png
+# *.geojson
+# *.json
+# *.csv
+# *.graphml
+
+# Specific to maritime-twin (Frontend)
+maritime-twin/node_modules/
+maritime-twin/dist/
+maritime-twin/.env.local
+maritime-twin/.env.development.local
+maritime-twin/.env.test.local
+maritime-twin/.env.production.local
