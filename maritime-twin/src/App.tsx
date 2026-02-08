@@ -14,6 +14,8 @@ function App() {
 
     const [startDate, setStartDate] = useState<string>("");
     const [shipPosition, setShipPosition] = useState<[number, number] | null>(null);
+    const [isPlayback, setIsPlayback] = useState(false);
+    const [playbackHours, setPlaybackHours] = useState(0);
 
     const [pathEdgeIds, setPathEdgeIds] = useState<Set<string>>(new Set());
     const [routeStats, setRouteStats] = useState<{ dist: number; chokepoints: { name: string; distance: number }[] } | null>(null);
@@ -78,6 +80,7 @@ function App() {
 
     // Actual Simulation Effect
     useEffect(() => {
+        if (isPlayback) return;
         if (!routeSegments.length || !startDate) {
             setShipPosition(null);
             return;
@@ -101,7 +104,43 @@ function App() {
         }, 1000); // Update every second
 
         return () => clearInterval(interval);
-    }, [startDate, routeSegments, graph]);
+    }, [startDate, routeSegments, graph, isPlayback]);
+
+    useEffect(() => {
+        if (!isPlayback) return;
+        if (!routeSegments.length || !routeStats) {
+            setShipPosition(null);
+            return;
+        }
+
+        const speedKmH = 40.74; // 22 knots
+        const stepHours = 1; // Playback step size
+        const intervalMs = 15; // Playback interval
+        const totalHours = routeStats.dist / speedKmH;
+
+        const interval = setInterval(() => {
+            setPlaybackHours(prev => {
+                const next = prev + stepHours;
+                const wrapped = next > totalHours ? 0 : next;
+                const distTravelled = wrapped * speedKmH;
+                const position = graph.getPointAlongRoute(routeSegments, distTravelled);
+                setShipPosition(position);
+                return wrapped;
+            });
+        }, intervalMs);
+
+        return () => clearInterval(interval);
+    }, [isPlayback, routeSegments, routeStats, graph]);
+
+    const togglePlayback = () => {
+        if (!isPlayback) {
+            const now = Date.now();
+            const start = startDate ? new Date(startDate).getTime() : now;
+            const elapsedHours = Math.max(0, (now - start) / (1000 * 60 * 60));
+            setPlaybackHours(elapsedHours);
+        }
+        setIsPlayback(prev => !prev);
+    };
 
     const handlePortClick = (portId: string) => {
         const portName = graph.ports[portId]?.name || "Unknown";
@@ -158,6 +197,8 @@ function App() {
                 graphStats={{ ports: Object.keys(graph.ports).length, routes: graph.adjList ? Object.keys(graph.adjList).length : 0 }}
                 startDate={startDate}
                 onStartDateChange={setStartDate}
+                isPlayback={isPlayback}
+                onTogglePlayback={togglePlayback}
             />
             <MapView
                 graph={graph}

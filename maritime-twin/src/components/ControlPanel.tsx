@@ -10,9 +10,11 @@ interface ControlPanelProps {
     graphStats: { ports: number; routes: number };
     startDate: string;
     onStartDateChange: (date: string) => void;
+    isPlayback: boolean;
+    onTogglePlayback: () => void;
 }
 
-export function ControlPanel({ onSelectMode, selectionMode, origin, destination, routeStats, onReset, graphStats, startDate, onStartDateChange }: ControlPanelProps) {
+export function ControlPanel({ onSelectMode, selectionMode, origin, destination, routeStats, onReset, graphStats, startDate, onStartDateChange, isPlayback, onTogglePlayback }: ControlPanelProps) {
     const formatETA = (distKm: number) => {
         if (!startDate) return null;
         const speedKmH = 40.74; // 22 knots
@@ -81,6 +83,14 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
                             <div className="text-red-500 text-xs mt-1">Start date cannot be in the future</div>
                         )}
                     </div>
+
+                    <button
+                        onClick={onTogglePlayback}
+                        className={`w-full text-sm font-semibold px-3 py-2 rounded-lg border transition-colors ${isPlayback ? 'bg-emerald-100 border-emerald-400 text-emerald-800' : 'bg-white border-slate-300 hover:bg-slate-50'
+                            }`}
+                    >
+                        {isPlayback ? 'Stop Playback' : 'Play Route'}
+                    </button>
 
                     <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                         <div className="text-xs text-slate-500 mb-1">Optimum Route</div>
