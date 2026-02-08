@@ -1,6 +1,7 @@
 import { PriorityQueue } from './PriorityQueue';
 import { GraphIndex } from '../graph/GraphIndex';
 import { Node, Edge, RouteResult } from '../types';
+import { stitchRouteSegments } from '../../utils/geo';
 
 export class DijkstraRouter {
     graph: GraphIndex;
@@ -50,37 +51,14 @@ export class DijkstraRouter {
                     }
                 }
                 path.push(this.graph.nodes[startNodeId]);
-                const orderedPath = path.reverse();
                 const orderedEdges = edges.reverse();
-
-                // Construct full geometry
-                const geometry: [number, number][] = [];
-                for (let i = 0; i < orderedEdges.length; i++) {
-                    const edge = orderedEdges[i];
-                    const sourceNode = orderedPath[i];
-
-                    // Determine orientation
-                    // If we differ from edge.source, we assume we are traversing backward (Target -> Source)
-                    // Note: This assumes edge.geometry is ordered Source -> Target.
-                    let segment = edge.geometry;
-                    if (sourceNode.id === edge.target) {
-                        segment = [...edge.geometry].reverse();
-                    }
-
-                    if (i === 0) {
-                        geometry.push(...segment);
-                    } else {
-                        // Avoid duplicating connection points
-                        geometry.push(...segment.slice(1));
-                    }
-                }
-
+                const startNode = this.graph.nodes[startNodeId];
+                const startAnchor: [number, number] = [startNode.lon, startNode.lat];
                 return {
-                    pathNodeIds: orderedPath.map(n => n.id),
-                    edges: orderedEdges,
+                    pathNodeIds: path.reverse().map(n => n.id),
+                    edges: edges.reverse(),
                     totalDist: currentDist,
-                    segments: orderedEdges.map(e => e.geometry),
-                    geometry: geometry
+                    segments: edges.map(e => e.geometry)
                 };
             }
 

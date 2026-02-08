@@ -23,6 +23,70 @@ function deg2rad(deg: number): number {
 }
 
 /**
+ * Haversine distance between two [lon, lat] points (km).
+ */
+function haversineDistancePoints(a: [number, number], b: [number, number]): number {
+    return haversineDistance(a[1], a[0], b[1], b[0]);
+}
+
+/**
+ * Orients consecutive edge geometries so they form a continuous polyline,
+ * reversing segments whose direction is flipped and snapping small gaps (<10 m).
+ * @param rawSegments  Edge geometries in route order
+ * @param startAnchor  [lon, lat] of the origin node — used to orient the first segment
+ * Returns a single merged linestring wrapped in an array (matching segments format).
+ */
+export function stitchRouteSegments(
+    rawSegments: [number, number][][],
+    startAnchor?: [number, number]
+): [number, number][][] {
+    const merged: [number, number][] = [];
+    const epsilonKm = 0.01; // 10 meters
+
+    for (const seg of rawSegments) {
+        if (!seg || seg.length === 0) continue;
+
+        let geometry = seg;
+        if (merged.length > 0) {
+            const prevEnd = merged[merged.length - 1];
+            const start = geometry[0];
+            const end = geometry[geometry.length - 1];
+
+            // Flip segment if its end is closer to the previous endpoint than its start
+            if (haversineDistancePoints(prevEnd, end) < haversineDistancePoints(prevEnd, start)) {
+                geometry = [...geometry].reverse();
+            }
+
+            const nextStart = geometry[0];
+            const gapKm = haversineDistancePoints(prevEnd, nextStart);
+
+            // If gap is larger than epsilon, insert a connecting point
+            if (gapKm > epsilonKm) {
+                merged.push(nextStart);
+            }
+
+            // Append points, skipping duplicate start when within epsilon
+            for (let i = 0; i < geometry.length; i++) {
+                if (i === 0 && haversineDistancePoints(prevEnd, geometry[0]) <= epsilonKm) continue;
+                merged.push(geometry[i]);
+            }
+        } else {
+            // First segment: orient toward startAnchor if provided
+            if (startAnchor) {
+                const dStart = haversineDistancePoints(startAnchor, geometry[0]);
+                const dEnd = haversineDistancePoints(startAnchor, geometry[geometry.length - 1]);
+                if (dEnd < dStart) {
+                    geometry = [...geometry].reverse();
+                }
+            }
+            merged.push(...geometry);
+        }
+    }
+
+    return merged.length ? [merged] : [];
+}
+
+/**
  * Interpolates a point along a route of segments.
  * @param segments List of linestrings (each linestring is [lon, lat][])
  * @param distanceKm Target distance from start
@@ -43,6 +107,9 @@ export function getPointAlongRoute(segments: [number, number][][], distanceKm: n
 
             // Segment Distance using Haversine
             const segDist = haversineDistance(p1[1], p1[0], p2[1], p2[0]);
+
+            // Guard against zero-length segments (duplicate points)
+            if (segDist <= 0) continue;
 
             if (coveredKm + segDist >= distanceKm) {
                 // Interpolate here
