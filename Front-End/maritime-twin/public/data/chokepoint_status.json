@@ -1,14 +1,57 @@
 {
-    "Suez Canal": 0,
-    "Panama Canal": 0,
-    "Strait of Hormuz": 0,
-    "Bab el-Mandeb": 0,
-    "Strait of Malacca": 0,
-    "Bosphorus": 0,
-    "Dardanelles": 0,
-    "Strait of Gibraltar": 0,
-    "English Channel": 0,
-    "Danish Straits": 0,
-    "Lombok Strait": 0,
-    "Sunda Strait": 0
+    "Suez Canal": {
+        "min": 6,
+        "typical": 24,
+        "max": 144
+    },
+    "Strait of Hormuz": {
+        "min": 0,
+        "typical": 6,
+        "max": 30
+    },
+    "Bab el-Mandeb": {
+        "min": 0,
+        "typical": 6,
+        "max": 35
+    },
+    "Strait of Malacca": {
+        "min": 4,
+        "typical": 12,
+        "max": 100
+    },
+    "Bosphorus": {
+        "min": 2,
+        "typical": 12,
+        "max": 32
+    },
+    "Dardanelles": {
+        "min": 1,
+        "typical": 5,
+        "max": 30
+    },
+    "Strait of Gibraltar": {
+        "min": 1,
+        "typical": 5,
+        "max": 24
+    },
+    "English Channel": {
+        "min": 1,
+        "typical": 6,
+        "max": 24
+    },
+    "Danish Straits": {
+        "min": 1,
+        "typical": 6,
+        "max": 24
+    },
+    "Lombok Strait": {
+        "min": 1,
+        "typical": 6,
+        "max": 24
+    },
+    "Sunda Strait": {
+        "min": 1,
+        "typical": 6,
+        "max": 24
+    }
 }

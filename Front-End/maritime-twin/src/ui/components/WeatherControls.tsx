@@ -20,7 +20,7 @@ export function WeatherControls() {
         return (
             <button
                 onClick={toggleVisible}
-                className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-xl border border-gray-200 text-slate-600 hover:text-blue-600 transition-colors z-10"
+                className="self-end w-fit bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-xl border border-gray-200 text-slate-600 hover:text-blue-600 transition-colors"
                 title="Show Weather Overlay"
             >
                 <Layers className="w-6 h-6" />
@@ -29,7 +29,7 @@ export function WeatherControls() {
     }
 
     return (
-        <div className="absolute top-4 right-4 w-64 bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-3 z-10 border border-gray-200 transition-all">
+        <div className="w-64 bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-3 border border-gray-200 transition-all">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                 <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
                     <Layers className="w-4 h-4 text-blue-500" />

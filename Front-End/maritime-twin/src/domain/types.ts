@@ -84,3 +84,46 @@ export interface WeatherConfig {
     opacity: number;
 }
 
+// ML Delay Prediction Types
+export type VesselType = 'Panamax' | 'Neopanamax';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface DelayConfig {
+    queueLength: number;
+    isBooked: boolean;
+    vesselType: VesselType;
+    vesselBeamM: number;
+    vesselLengthM: number;
+    vesselDraftM: number;
+}
+
+export interface DelayPrediction {
+    isDelayed: boolean;
+    probability: number;
+    predictedDelayHours: number;
+    riskLevel: RiskLevel;
+    fetchedAt: string; // ISO timestamp
+}
+
+export interface PanamaWeather {
+    rainfallMm: number;
+    windSpeedKmh: number;
+    visibilityKm: number;
+    gatunLakeLevelM: number; // Simulated for now
+    fetchedAt: string;
+}
+
+// Detailed chokepoint delay info for hover display
+export interface ChokepointDelayInfo {
+    name: string;
+    delayHours: number;
+    eta: string; // ISO date when ship arrives at chokepoint
+    distanceFromOrigin: number; // km
+    weather: {
+        rainfallMm: number;
+        windSpeedKmh: number;
+        visibilityKm: number;
+    };
+    reason: string; // Human-readable reason for delay
+    isOnRoute: boolean; // Whether this chokepoint is on the current route
+}

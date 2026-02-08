@@ -19,11 +19,14 @@ export function MapView() {
         setSelectionMode,
         setOriginId,
         setDestId,
-        route // Extract route from store
+        route,
+        chokepointDelays,
+        chokepointDelayInfo // Detailed delay info for hover popup
     } = useAppStore();
 
     const mapContainer = useRef<HTMLDivElement>(null);
-    const map = useRef<maplibregl.Map | null>(null); // Use maplibre types
+    const map = useRef<maplibregl.Map | null>(null);
+    const popup = useRef<maplibregl.Popup | null>(null); // Popup ref for chokepoint hover
     const [loaded, setLoaded] = useState(false);
 
     // Weather Layer Hook
@@ -521,6 +524,101 @@ export function MapView() {
             m.on('mouseenter', 'chokepoints-marker', () => { m.getCanvas().style.cursor = 'pointer'; });
             m.on('mouseleave', 'chokepoints-marker', () => { m.getCanvas().style.cursor = ''; });
         }
+
+        // Chokepoint hover popup - shows detailed delay info for ALL chokepoints
+        m.on('mouseenter', 'chokepoints-marker', (e) => {
+            if (!e.features || !e.features[0].properties) return;
+            const name = e.features[0].properties.name;
+            const coords = e.lngLat;
+
+            // Get detailed delay info if available, otherwise fall back to basic delay
+            const info = chokepointDelayInfo[name];
+            const delayHours = info?.delayHours || chokepointDelays[name] || 0;
+
+            // Create popup content
+            let html = `<div style="padding: 10px; font-family: system-ui; font-size: 12px; min-width: 180px;">`;
+            html += `<div style="font-weight: bold; color: #0ea5e9; margin-bottom: 6px; font-size: 13px;">${name}</div>`;
+
+            if (info && info.isOnRoute) {
+                // Determine color based on delay severity
+                const delayColor = delayHours > 48 ? '#dc2626' :
+                    delayHours > 24 ? '#ca8a04' : '#16a34a';
+
+                // ETA
+                const etaDate = new Date(info.eta);
+                const etaStr = etaDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: #64748b;">ETA:</span><span style="font-weight: 500;">${etaStr}</span></div>`;
+
+                // Distance
+                html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: #64748b;">Distance:</span><span style="font-weight: 500;">${info.distanceFromOrigin.toLocaleString()} km</span></div>`;
+
+                // Delay
+                html += `<div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span style="color: #64748b;">Delay:</span><span style="font-weight: 600; color: ${delayColor};">${delayHours}h</span></div>`;
+
+                // Weather conditions
+                html += `<div style="border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 2px;">`;
+                html += `<div style="font-weight: 600; color: #475569; margin-bottom: 4px; font-size: 11px;">Forecast Conditions:</div>`;
+                html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">`;
+                html += `<div><span style="color: #64748b;">💨 Wind:</span> ${info.weather.windSpeedKmh.toFixed(0)} km/h</div>`;
+                html += `<div><span style="color: #64748b;">👁 Vis:</span> ${info.weather.visibilityKm.toFixed(1)} km</div>`;
+                html += `<div><span style="color: #64748b;">🌧 Rain:</span> ${info.weather.rainfallMm.toFixed(1)} mm</div>`;
+                html += `</div></div>`;
+
+                // Reason
+                if (info.reason) {
+                    html += `<div style="margin-top: 6px; padding: 4px 6px; background: ${delayColor}15; border-radius: 4px; font-size: 11px; color: ${delayColor};">`;
+                    html += `${info.reason}`;
+                    html += `</div>`;
+                }
+            } else if (info && !info.isOnRoute) {
+                // Off-route chokepoint with calculated info
+                const delayColor = delayHours > 48 ? '#dc2626' :
+                    delayHours > 24 ? '#ca8a04' : '#16a34a';
+
+                html += `<div style="background: #fef3c7; padding: 4px 6px; border-radius: 4px; margin-bottom: 6px; font-size: 10px; color: #92400e;">⚠️ Not on current route</div>`;
+
+                // Delay
+                html += `<div style="display: flex; justify-content: space-between; margin-bottom: 6px;"><span style="color: #64748b;">Current Delay:</span><span style="font-weight: 600; color: ${delayColor};">${delayHours}h</span></div>`;
+
+                // Weather conditions
+                html += `<div style="border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 2px;">`;
+                html += `<div style="font-weight: 600; color: #475569; margin-bottom: 4px; font-size: 11px;">Current Conditions:</div>`;
+                html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">`;
+                html += `<div><span style="color: #64748b;">💨 Wind:</span> ${info.weather.windSpeedKmh.toFixed(0)} km/h</div>`;
+                html += `<div><span style="color: #64748b;">👁 Vis:</span> ${info.weather.visibilityKm.toFixed(1)} km</div>`;
+                html += `<div><span style="color: #64748b;">🌧 Rain:</span> ${info.weather.rainfallMm.toFixed(1)} mm</div>`;
+                html += `</div></div>`;
+
+                // Reason
+                if (info.reason) {
+                    html += `<div style="margin-top: 6px; padding: 4px 6px; background: ${delayColor}15; border-radius: 4px; font-size: 11px; color: ${delayColor};">`;
+                    html += `${info.reason}`;
+                    html += `</div>`;
+                }
+            } else if (delayHours > 0) {
+                // Basic fallback for chokepoints without info
+                const delayColor = delayHours > 48 ? '#dc2626' :
+                    delayHours > 24 ? '#ca8a04' : '#16a34a';
+                html += `<div style="display: flex; justify-content: space-between; gap: 12px;">`;
+                html += `<span>Current Delay:</span><span style="font-weight: 600; color: ${delayColor};">${delayHours}h</span></div>`;
+            } else {
+                html += `<div style="color: #64748b;">Select a route to see delay data</div>`;
+            }
+            html += `</div>`;
+
+            if (popup.current) popup.current.remove();
+            popup.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
+                .setLngLat(coords)
+                .setHTML(html)
+                .addTo(m);
+        });
+
+        m.on('mouseleave', 'chokepoints-marker', () => {
+            if (popup.current) {
+                popup.current.remove();
+                popup.current = null;
+            }
+        });
 
         // Clean up old route layer if it exists
         if (m.getLayer('route-layer')) m.removeLayer('route-layer');

@@ -1,4 +1,4 @@
-import { Locate, Anchor, ShieldAlert, Route as RouteIcon, Calculator } from 'lucide-react';
+import { Locate, Anchor, ShieldAlert, Route as RouteIcon } from 'lucide-react';
 import { useAppStore } from '../../state/AppStore';
 
 export function ControlPanel() {
@@ -182,25 +182,18 @@ export function ControlPanel() {
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <span className="font-semibold text-xs text-slate-500 block">TRANSIT</span>
-                                                    {cp.name}
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{cp.name}</span>
+                                                        {currentDelay > 0 && (
+                                                            <span className="text-xs text-red-600 font-semibold">+{currentDelay}h</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => {
-                                                        // Simulate delay: 0-72h
-                                                        const delay = Math.floor(Math.random() * 72);
-                                                        setChokepointDelay(cp.name, delay);
-                                                    }}
-                                                    className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600"
-                                                    title="Calculate Potential Delay"
-                                                >
-                                                    <Calculator className="w-3 h-3" />
-                                                </button>
                                             </div>
 
                                             {startDate && (
                                                 <div className="flex flex-col gap-0.5 mt-0.5">
                                                     <div className="text-xs text-slate-400">ETA: {formatETA(cp.distance, previousDelays)}</div>
-                                                    {currentDelay > 0 && <div className="text-xs text-red-500 font-semibold">+ {currentDelay}h delay</div>}
                                                 </div>
                                             )}
                                         </div>

@@ -3,7 +3,8 @@ import { GraphIndex } from '../domain/graph/GraphIndex';
 import { DijkstraRouter } from '../domain/routing/Dijkstra';
 import { SimulationTimeline } from '../domain/simulation/timeline';
 import { getPointAlongRoute, getRouteLengthKm } from '../utils/geo';
-import { RouteResult, WeatherConfig } from '../domain/types';
+import { predictChokepointDelay } from '../utils/chokepointDelay';
+import { RouteResult, WeatherConfig, DelayPrediction, ChokepointDelayInfo } from '../domain/types';
 
 interface AppState {
     graph: GraphIndex;
@@ -25,9 +26,16 @@ interface AppState {
 
     // Delays
     chokepointDelays: Record<string, number>;
+    chokepointDelayInfo: Record<string, ChokepointDelayInfo>;
 
     // Weather
     weatherConfig: WeatherConfig;
+
+    // Panama Canal Delay Prediction
+    panamaCanalDelay: DelayPrediction | null;
+
+    // Suez Canal Delay Prediction
+    suezCanalDelay: DelayPrediction | null;
 
     // Simulation Playback
     isPlayback: boolean;
@@ -41,7 +49,10 @@ interface AppState {
     toggleChokepoint: (name: string) => void;
     setStartDate: (date: string) => void;
     setChokepointDelay: (name: string, delay: number) => void;
+    setChokepointDelayInfo: (info: Record<string, ChokepointDelayInfo>) => void;
     setWeatherConfig: (config: WeatherConfig) => void;
+    setPanamaCanalDelay: (prediction: DelayPrediction | null) => void;
+    setSuezCanalDelay: (prediction: DelayPrediction | null) => void;
     reset: () => void;
 }
 
@@ -59,12 +70,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [destId, setDestId] = useState<string | null>(null);
     const [startDate, setStartDate] = useState<string>("");
     const [chokepointDelays, setChokepointDelays] = useState<Record<string, number>>({});
+    const [chokepointDelayInfo, setChokepointDelayInfo] = useState<Record<string, ChokepointDelayInfo>>({});
     const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>({
         visible: false,
         provider: 'openweathermap',
         type: 'clouds',
         opacity: 0.5
     });
+    const [panamaCanalDelay, setPanamaCanalDelay] = useState<DelayPrediction | null>(null);
+    const [suezCanalDelay, setSuezCanalDelay] = useState<DelayPrediction | null>(null);
 
     // Playback State
     const [isPlayback, setIsPlayback] = useState(false);
@@ -89,25 +103,151 @@ export function AppProvider({ children }: { children: ReactNode }) {
         load();
     }, [graph]);
 
-    // Calculate Route
+    // Calculate Route and Auto-Set Chokepoint Delays
     useEffect(() => {
         if (!isGraphLoaded || !originId || !destId || originId === destId) {
             setRoute(null);
             return;
         }
 
-        // Clean delays if route changes significantly? 
-        // For now keep them.
+        // Build delay penalties map from canal predictions
+        const delayPenalties: Record<string, number> = {};
+        if (panamaCanalDelay && panamaCanalDelay.predictedDelayHours > 0) {
+            delayPenalties['Panama Canal'] = panamaCanalDelay.predictedDelayHours;
+        }
+        if (suezCanalDelay && suezCanalDelay.predictedDelayHours > 0) {
+            delayPenalties['Suez Canal'] = suezCanalDelay.predictedDelayHours;
+        }
 
-        const result = router.findPath(originId, destId);
+        const result = router.findPath(originId, destId, delayPenalties);
         setRoute(result);
         setPlaybackHours(0);
         if (result) {
             const startPos = getPointAlongRoute(result.segments, 0);
-            
             setShipPosition(startPos);
+
+            // Ship speed assumption: 20 knots = ~37 km/h
+            const SHIP_SPEED_KMH = 37;
+            const departureDate = startDate ? new Date(startDate) : new Date();
+
+            // Track cumulative distance to calculate ETA for each chokepoint on route
+            let cumulativeDistance = 0;
+            const newDelays: Record<string, number> = {};
+            const newDelayInfo: Record<string, ChokepointDelayInfo> = {};
+            const onRouteChokepoints = new Set<string>();
+
+            // First pass: Calculate delays for chokepoints ON the route
+            result.edges.forEach(edge => {
+                if (edge.chokepoints && edge.chokepoints.length > 0) {
+                    edge.chokepoints.forEach(cp => {
+                        if (!onRouteChokepoints.has(cp)) {
+                            onRouteChokepoints.add(cp);
+
+                            // Calculate ETA based on distance traveled
+                            const hoursToReach = cumulativeDistance / SHIP_SPEED_KMH;
+                            const eta = new Date(departureDate.getTime() + hoursToReach * 60 * 60 * 1000);
+
+                            // Generate weather based on ETA (simulated forecast)
+                            const dayOfYear = Math.floor((eta.getTime() - new Date(eta.getFullYear(), 0, 0).getTime()) / 86400000);
+                            const season = Math.sin((dayOfYear / 365) * Math.PI * 2);
+
+                            const weather = {
+                                rainfallMm: Math.max(0, 10 + season * 15 + Math.random() * 10),
+                                windSpeedKmh: 15 + Math.abs(season) * 20 + Math.random() * 15,
+                                visibilityKm: 8 - Math.abs(season) * 2 + Math.random() * 2
+                            };
+
+                            let delayHours = 0;
+                            let reason = '';
+
+                            if (cp === 'Panama Canal') {
+                                delayHours = panamaCanalDelay?.predictedDelayHours || 0;
+                                reason = panamaCanalDelay?.riskLevel === 'HIGH' ? 'High congestion and adverse weather' :
+                                    panamaCanalDelay?.riskLevel === 'MEDIUM' ? 'Moderate queue length' : 'Normal operations';
+                            } else if (cp === 'Suez Canal') {
+                                delayHours = suezCanalDelay?.predictedDelayHours || 0;
+                                reason = suezCanalDelay?.riskLevel === 'HIGH' ? 'Convoy congestion' :
+                                    suezCanalDelay?.riskLevel === 'MEDIUM' ? 'Extended convoy wait' : 'Standard transit';
+                            } else {
+                                delayHours = predictChokepointDelay(cp, weather);
+                                const reasons: string[] = [];
+                                if (weather.windSpeedKmh > 35) reasons.push('High winds');
+                                if (weather.visibilityKm < 6) reasons.push('Low visibility');
+                                if (weather.rainfallMm > 15) reasons.push('Heavy rainfall');
+                                reason = reasons.length > 0 ? reasons.join(', ') : 'Normal conditions';
+                            }
+
+                            newDelays[cp] = delayHours;
+                            newDelayInfo[cp] = {
+                                name: cp,
+                                delayHours,
+                                eta: eta.toISOString(),
+                                distanceFromOrigin: Math.round(cumulativeDistance),
+                                weather,
+                                reason,
+                                isOnRoute: true
+                            };
+                        }
+                    });
+                }
+                cumulativeDistance += edge.dist_km;
+            });
+
+            // Second pass: Calculate delays for ALL chokepoints NOT on the route
+            Object.entries(graph.chokepoints).forEach(([cpName]) => {
+                if (!onRouteChokepoints.has(cpName)) {
+                    // Use current date for off-route chokepoints
+                    const now = new Date();
+                    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+                    const season = Math.sin((dayOfYear / 365) * Math.PI * 2);
+
+                    const weather = {
+                        rainfallMm: Math.max(0, 10 + season * 15 + Math.random() * 10),
+                        windSpeedKmh: 15 + Math.abs(season) * 20 + Math.random() * 15,
+                        visibilityKm: 8 - Math.abs(season) * 2 + Math.random() * 2
+                    };
+
+                    let delayHours = 0;
+                    let reason = '';
+
+                    if (cpName === 'Panama Canal') {
+                        delayHours = panamaCanalDelay?.predictedDelayHours || predictChokepointDelay(cpName, weather);
+                        reason = panamaCanalDelay?.riskLevel === 'HIGH' ? 'High congestion' :
+                            panamaCanalDelay?.riskLevel === 'MEDIUM' ? 'Moderate queue' : 'Normal operations';
+                    } else if (cpName === 'Suez Canal') {
+                        delayHours = suezCanalDelay?.predictedDelayHours || predictChokepointDelay(cpName, weather);
+                        reason = suezCanalDelay?.riskLevel === 'HIGH' ? 'Convoy congestion' :
+                            suezCanalDelay?.riskLevel === 'MEDIUM' ? 'Extended convoy wait' : 'Standard transit';
+                    } else {
+                        delayHours = predictChokepointDelay(cpName, weather);
+                        const reasons: string[] = [];
+                        if (weather.windSpeedKmh > 35) reasons.push('High winds');
+                        if (weather.visibilityKm < 6) reasons.push('Low visibility');
+                        if (weather.rainfallMm > 15) reasons.push('Heavy rainfall');
+                        reason = reasons.length > 0 ? reasons.join(', ') : 'Normal conditions';
+                    }
+
+                    newDelays[cpName] = delayHours;
+                    newDelayInfo[cpName] = {
+                        name: cpName,
+                        delayHours,
+                        eta: now.toISOString(), // Current time for off-route
+                        distanceFromOrigin: 0, // Not applicable
+                        weather,
+                        reason,
+                        isOnRoute: false
+                    };
+                }
+            });
+
+            // Batch update all delays
+            Object.entries(newDelays).forEach(([name, delay]) => {
+                setChokepointDelay(name, delay);
+            });
+            setChokepointDelayInfo(newDelayInfo);
         }
-    }, [isGraphLoaded, originId, destId, refresh, graph, router]);
+    }, [isGraphLoaded, originId, destId, panamaCanalDelay, suezCanalDelay, refresh, graph, router]);
+
 
     // Simulation Loop (Real-time / Static Mode)
     useEffect(() => {
@@ -235,6 +375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startDate,
         shipPosition,
         chokepointDelays,
+        chokepointDelayInfo,
         weatherConfig,
         setSelectionMode,
         setOriginId,
@@ -243,7 +384,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleChokepoint,
         setStartDate,
         setChokepointDelay,
-        setWeatherConfig,
+        setChokepointDelayInfo,
+        setWeatherConfig: (config: Partial<WeatherConfig>) => setWeatherConfig(prev => ({ ...prev, ...config })),
+        panamaCanalDelay,
+        setPanamaCanalDelay,
+        suezCanalDelay,
+        setSuezCanalDelay,
         reset,
         isPlayback,
         togglePlayback

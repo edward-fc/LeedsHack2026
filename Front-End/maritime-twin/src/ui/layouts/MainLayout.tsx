@@ -2,10 +2,14 @@ import { useAppStore } from '../../state/AppStore';
 import { ControlPanel } from '../components/ControlPanel';
 import { MapView } from '../components/MapView';
 import { WeatherControls } from '../components/WeatherControls';
+import { DelayControls } from '../components/DelayControls';
+import { SuezDelayControls } from '../components/SuezDelayControls';
+import { usePanamaWeather } from '../../map/hooks/usePanamaWeather';
 import { Loader2 } from 'lucide-react';
 
 export function MainLayout() {
-    const { isGraphLoaded } = useAppStore();
+    const { isGraphLoaded, setPanamaCanalDelay, setSuezCanalDelay } = useAppStore();
+    const { weather } = usePanamaWeather();
 
     return (
         <div className="relative w-full h-screen overflow-hidden bg-slate-900">
@@ -14,9 +18,15 @@ export function MainLayout() {
                 <MapView />
             </div>
 
-            {/* UI Overlays */}
+            {/* Left Panel */}
             <ControlPanel />
-            <WeatherControls />
+
+            {/* Right Panels Container - stacks vertically */}
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-3 max-h-[calc(100vh-2rem)] overflow-y-auto">
+                <WeatherControls />
+                <DelayControls weather={weather} onPredictionChange={setPanamaCanalDelay} />
+                <SuezDelayControls onPredictionChange={setSuezCanalDelay} />
+            </div>
 
             {/* Loading State */}
             {!isGraphLoaded && (
