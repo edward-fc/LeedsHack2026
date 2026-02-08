@@ -58,3 +58,4 @@ maritime-twin/.env.local
 maritime-twin/.env.development.local
 maritime-twin/.env.test.local
 maritime-twin/.env.production.local
+maritime-twin/.env
