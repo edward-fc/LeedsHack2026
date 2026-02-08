@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { GraphIndex } from '../domain/graph/GraphIndex';
 import { DijkstraRouter } from '../domain/routing/Dijkstra';
 import { SimulationTimeline } from '../domain/simulation/timeline';
+import { getPointAlongRoute } from '../utils/geo';
 import { RouteResult, WeatherConfig } from '../domain/types';
 
 interface AppState {
@@ -27,6 +28,10 @@ interface AppState {
 
     // Weather
     weatherConfig: WeatherConfig;
+
+    // Simulation Playback
+    isPlayback: boolean;
+    togglePlayback: () => void;
 
     // Actions
     setSelectionMode: (mode: 'origin' | 'destination' | null) => void;
@@ -61,6 +66,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         opacity: 0.5
     });
 
+    // Playback State
+    const [isPlayback, setIsPlayback] = useState(false);
+    const [playbackHours, setPlaybackHours] = useState(0);
+
     // Derived State
     const [route, setRoute] = useState<RouteResult | null>(null);
     const [shipPosition, setShipPosition] = useState<[number, number] | null>(null);
@@ -94,20 +103,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRoute(result);
     }, [isGraphLoaded, originId, destId, refresh, graph, router]);
 
-    // Simulation Loop
+    // Simulation Loop (Real-time / Static Mode)
     useEffect(() => {
-        if (!route || !startDate) {
+        if (!route) {
             setShipPosition(null);
             return;
         }
 
         const interval = setInterval(() => {
-            const pos = SimulationTimeline.getShipPosition(route.segments, startDate);
-            setShipPosition(pos);
+            if (isPlayback) {
+                // Playback Mode handled in separate effect
+            } else if (startDate) {
+                // Real-time / Static Mode
+                const pos = SimulationTimeline.getShipPosition(route.segments, startDate);
+                setShipPosition(pos);
+            }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [route, startDate]);
+    }, [route, startDate, isPlayback]);
+
+    // Playback Loop
+    useEffect(() => {
+        if (!isPlayback || !route) {
+            return;
+        }
+
+        const speedKmH = 40.74; // 22 knots
+        const stepHours = 1; // Playback step size
+        const intervalMs = 25; // Faster update for smooth playback
+        const totalHours = route.totalDist / speedKmH;
+
+        const interval = setInterval(() => {
+            setPlaybackHours(prev => {
+                const next = prev + stepHours;
+                const wrapped = next > totalHours ? 0 : next;
+
+                // Calculate position
+                const distTravelled = wrapped * speedKmH;
+                const pos = getPointAlongRoute(route.segments, distTravelled);
+                setShipPosition(pos);
+
+                return wrapped;
+            });
+        }, intervalMs);
+
+        return () => clearInterval(interval);
+    }, [isPlayback, route]);
+
+    // Initial Playback Position Sync
+    useEffect(() => {
+        if (isPlayback && route) {
+            const speedKmH = 40.74;
+            const dist = playbackHours * speedKmH;
+            const pos = getPointAlongRoute(route.segments, dist);
+            setShipPosition(pos);
+        }
+    }, [isPlayback, route]); // run once on entry or when route changes while playing
+
+    // Refined Implementation of combined loop
+    // This block is now redundant due to the separate effects above.
+    // Keeping it commented out or removing it based on final decision.
+    // For now, removing it as the new effects cover its functionality.
+
+    // Actions
+    const togglePlayback = () => {
+        if (!isPlayback) {
+            const now = Date.now();
+            const start = startDate ? new Date(startDate).getTime() : now;
+            const elapsedHours = Math.max(0, (now - start) / (1000 * 60 * 60));
+            setPlaybackHours(elapsedHours);
+        }
+        setIsPlayback(prev => !prev);
+    };
 
     // Actions
     const togglePort = (id: string) => {
@@ -157,7 +225,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setStartDate,
         setChokepointDelay,
         setWeatherConfig,
-        reset
+        reset,
+        isPlayback,
+        togglePlayback
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
