@@ -2,6 +2,7 @@ import { useAppStore } from '../../state/AppStore';
 import { ControlPanel } from '../components/ControlPanel';
 import { MapView } from '../components/MapView';
 import { WeatherControls } from '../components/WeatherControls';
+import { GeminiGarbage } from '../components/GeminiGarbage';
 import { Loader2 } from 'lucide-react';
 
 export function MainLayout() {
@@ -17,6 +18,7 @@ export function MainLayout() {
             {/* UI Overlays */}
             <ControlPanel />
             <WeatherControls />
+            <GeminiGarbage />
 
             {/* Loading State */}
             {!isGraphLoaded && (
