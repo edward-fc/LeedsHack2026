@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panama Canal Delay Predictor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            warning: #f0f0f0;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 0.5rem;
+            color: #0078d4;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .group {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+
+        .group h4 {
+            margin-top: 0;
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.5);
+            margin-right: 0.5rem;
+        }
+
+        .presets {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-preset {
+            background: #e1e1e1;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-preset:hover {
+            background: #d0d0d0;
+        }
+
+        button.submit {
+            width: 100%;
+            padding: 1rem;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.submit:hover {
+            background: #0060aa;
+        }
+
+        #result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 6px;
+            display: none;
+            text-align: center;
+        }
+
+        .risk-LOW {
+            background: #dff6dd;
+            color: #107c10;
+            border: 1px solid #107c10;
+        }
+
+        .risk-MEDIUM {
+            background: #fff4ce;
+            color: #9c6500;
+            border: 1px solid #9c6500;
+        }
+
+        .risk-HIGH {
+            background: #fde7e9;
+            color: #d13438;
+            border: 1px solid #d13438;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        small {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>🚢 Panama Canal Delay Predictor</h2>
+
+        <div class="presets">
+            <strong>Scenarios:</strong>
+            <button class="btn-preset" onclick="setPreset('normal')">Normal Operations</button>
+            <button class="btn-preset" onclick="setPreset('backlog')">Heavy Backlog (Q=80)</button>
+            <button class="btn-preset" onclick="setPreset('drought')">Drought (Low Lake)</button>
+            <button class="btn-preset" onclick="setPreset('storm')">Tropical Storm</button>
+        </div>
+
+        <form id="predictForm" onsubmit="predict(event)">
+            <div class="grid">
+                <!-- Canal Operations -->
+                <div class="group">
+                    <h4>Canal Operations</h4>
+                    <div>
+                        <label>Queue Length (Ships)</label>
+                        <input type="number" id="queue_length" value="15" min="0" max="300">
+                    </div>
+                    <div style="margin-top: 1rem; display: flex; align-items: center;">
+                        <input type="checkbox" id="booked" checked>
+                        <label for="booked" style="margin:0">Vessel has Booking?</label>
+                    </div>
+                    <small>Unbooked vessels face quadratic delays.</small>
+                </div>
+
+                <!-- Weather -->
+                <div class="group">
+                    <h4>Weather Conditions</h4>
+                    <div>
+                        <label>Rainfall (mm)</label>
+                        <input type="number" id="rainfall_mm" value="0" min="0" max="200">
+                    </div>
+                    <div>
+                        <label>Wind Speed (km/h)</label>
+                        <input type="number" id="wind_speed_kmh" value="15" min="0" max="100">
+                    </div>
+                    <div>
+                        <label>Visibility (km)</label>
+                        <input type="number" id="visibility_km" value="10" min="0" max="20">
+                    </div>
+                </div>
+
+                <!-- Environment & Time -->
+                <div class="group">
+                    <h4>Environment & Time</h4>
+                    <div>
+                        <label>Gatun Lake Level (m)</label>
+                        <input type="number" id="gatun_lake_level_m" value="26.7" step="0.1" min="20.0" max="29.0">
+                    </div>
+                    <div>
+                        <label>Month (1-12)</label>
+                        <input type="number" id="month" value="5" min="1" max="12">
+                    </div>
+                    <div>
+                        <label>Hour (0-23)</label>
+                        <input type="number" id="hour" value="12" min="0" max="23">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit">Calculate Predicted Delay</button>
+        </form>
+
+        <div id="result">
+            <h3 id="riskTitle">RISK LEVEL: LOW</h3>
+            <div class="stat-grid">
+                <div>
+                    <div class="stat-value" id="delayHours">12.5 hrs</div>
+                    <div class="stat-label">Est. Wait Time</div>
+                </div>
+                <div>
+                    <div class="stat-value" id="delayDays">0.5 Days</div>
+                    <div class="stat-label">Duration</div>
+                </div>
+                <div>
+                    <div class="stat-value" id="probDelay">85%</div>
+                    <div class="stat-label">Probability</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/predict";
+
+        const presets = {
+            normal: { queue: 10, booked: true, rain: 0, lake: 26.7, wind: 15, vis: 10 },
+            backlog: { queue: 80, booked: false, rain: 10, lake: 26.5, wind: 15, vis: 10 },
+            drought: { queue: 40, booked: false, rain: 0, lake: 24.0, wind: 10, vis: 12 },
+            storm: { queue: 60, booked: true, rain: 60, lake: 26.5, wind: 55, vis: 3 }
+        };
+
+        function setPreset(name) {
+            const p = presets[name];
+            document.getElementById('queue_length').value = p.queue;
+            document.getElementById('booked').checked = p.booked;
+            document.getElementById('rainfall_mm').value = p.rain;
+            document.getElementById('gatun_lake_level_m').value = p.lake;
+            document.getElementById('wind_speed_kmh').value = p.wind;
+            document.getElementById('visibility_km').value = p.vis;
+
+            // Auto submit for instant feedback
+            document.getElementById('predictForm').dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+
+        async function predict(e) {
+            e.preventDefault();
+            const btn = document.querySelector('button.submit');
+            btn.textContent = "Calculating...";
+
+            const data = {
+                queue_length: parseFloat(document.getElementById('queue_length').value),
+                is_booked: document.getElementById('booked').checked ? 1 : 0,
+                rainfall_mm: parseFloat(document.getElementById('rainfall_mm').value),
+                gatun_lake_level_m: parseFloat(document.getElementById('gatun_lake_level_m').value),
+                wind_speed_kmh: parseFloat(document.getElementById('wind_speed_kmh').value),
+                visibility_km: parseFloat(document.getElementById('visibility_km').value),
+                month: parseInt(document.getElementById('month').value),
+                hour: parseInt(document.getElementById('hour').value),
+                day_of_week: 3 // Default wed
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                showResult(result);
+            } catch (err) {
+                alert("Error connecting to backend: " + err.message);
+            } finally {
+                btn.textContent = "Calculate Predicted Delay";
+            }
+        }
+
+        function showResult(data) {
+            const resDiv = document.getElementById('result');
+            const h3 = document.getElementById('riskTitle');
+
+            resDiv.style.display = "block";
+            resDiv.className = `risk-${data.risk_level}`;
+
+            h3.textContent = `RISK LEVEL: ${data.risk_level}`;
+            document.getElementById('delayHours').textContent = `${data.predicted_delay_hours} hrs`;
+            document.getElementById('delayDays').textContent = `${(data.predicted_delay_hours / 24).toFixed(1)} Days`;
+            document.getElementById('probDelay').textContent = `${(data.probability * 100).toFixed(0)}%`;
+        }
+    </script>
+</body>
+
+</html>
