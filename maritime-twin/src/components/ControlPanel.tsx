@@ -8,9 +8,11 @@ interface ControlPanelProps {
     routeStats: { dist: number } | null;
     onReset: () => void;
     graphStats: { ports: number; routes: number };
+    startDate: string;
+    onStartDateChange: (date: string) => void;
 }
 
-export function ControlPanel({ onSelectMode, selectionMode, origin, destination, routeStats, onReset, graphStats }: ControlPanelProps) {
+export function ControlPanel({ onSelectMode, selectionMode, origin, destination, routeStats, onReset, graphStats, startDate, onStartDateChange }: ControlPanelProps) {
     return (
         <div className="absolute top-4 left-4 w-80 bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-4 z-10 border border-gray-200">
             <h1 className="text-xl font-bold flex items-center gap-2 text-slate-800">
@@ -56,10 +58,29 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
             </div>
 
             {routeStats && (
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <div className="text-xs text-slate-500 mb-1">Optimum Route</div>
-                    <div className="text-2xl font-bold text-slate-800">{(routeStats.dist).toFixed(0)} <span className="text-sm font-normal text-slate-500">km</span></div>
-                    <div className="text-xs text-slate-400 mt-1">~{((routeStats.dist / 30) / 24).toFixed(1)} days @ 30 km/h</div>
+                <div className="flex flex-col gap-2">
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <label className="text-xs font-semibold uppercase text-slate-400 block mb-1">Journey Start</label>
+                        <input
+                            type="datetime-local"
+                            value={startDate}
+                            max={new Date().toISOString().slice(0, 16)}
+                            onChange={(e) => onStartDateChange(e.target.value)}
+                            className="w-full text-sm p-1 border rounded bg-white text-slate-700"
+                        />
+                        {startDate && new Date(startDate) > new Date() && (
+                            <div className="text-red-500 text-xs mt-1">Start date cannot be in the future</div>
+                        )}
+                    </div>
+
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <div className="text-xs text-slate-500 mb-1">Optimum Route</div>
+                        <div className="text-2xl font-bold text-slate-800">
+                            {Math.floor(routeStats.dist / 40.74 / 24)}<span className="text-base font-normal text-slate-500 ml-1 mr-2">d</span>
+                            {Math.round((routeStats.dist / 40.74) % 24)}<span className="text-base font-normal text-slate-500 ml-1">h</span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">{(routeStats.dist).toFixed(0)} km @ 22 knots</div>
+                    </div>
                 </div>
             )}
 

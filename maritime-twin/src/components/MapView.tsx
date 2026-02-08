@@ -10,9 +10,10 @@ interface MapViewProps {
     pathEdgeIds: Set<string>;
     originId: string | null;
     destId: string | null;
+    shipPosition: [number, number] | null;
 }
 
-export function MapView({ graph, onPortClick, onChokepointClick, pathEdgeIds, originId, destId }: MapViewProps) {
+export function MapView({ graph, onPortClick, onChokepointClick, pathEdgeIds, originId, destId, shipPosition }: MapViewProps) {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null); // Use maplibre types
     const [loaded, setLoaded] = useState(false);
@@ -50,6 +51,43 @@ export function MapView({ graph, onPortClick, onChokepointClick, pathEdgeIds, or
             }
         };
     }, []);
+
+    // Ship Marker Update
+    useEffect(() => {
+        if (!loaded || !map.current) return;
+        const m = map.current;
+
+        const shipGeoJSON = {
+            type: 'FeatureCollection',
+            features: shipPosition ? [{
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: shipPosition
+                },
+                properties: {}
+            }] : []
+        };
+
+        if (m.getSource('ship')) {
+            (m.getSource('ship') as maplibregl.GeoJSONSource).setData(shipGeoJSON as any);
+        } else {
+            m.addSource('ship', { type: 'geojson', data: shipGeoJSON as any });
+            m.addLayer({
+                id: 'ship-layer',
+                type: 'circle',
+                source: 'ship',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#0000ff', // Blue
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff',
+                    'circle-pitch-alignment': 'map'
+                }
+            });
+            // Pulse animation layer (optional, can add later)
+        }
+    }, [loaded, shipPosition]);
 
     // Update Data Sources
     useEffect(() => {
