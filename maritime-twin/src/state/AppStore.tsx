@@ -101,6 +101,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const result = router.findPath(originId, destId);
         setRoute(result);
+        setPlaybackHours(0);
+        if (result) {
+            const startPos = getPointAlongRoute(result.segments, 0);
+            
+            setShipPosition(startPos);
+        }
     }, [isGraphLoaded, originId, destId, refresh, graph, router]);
 
     // Simulation Loop (Real-time / Static Mode)
@@ -131,7 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const speedKmH = 40.74; // 22 knots
         const stepHours = 1; // Playback step size
-        const intervalMs = 25; // Faster update for smooth playback
+        const intervalMs = 7; // Faster update for smooth playback
         const totalHours = route.totalDist / speedKmH;
 
         const interval = setInterval(() => {
@@ -169,10 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Actions
     const togglePlayback = () => {
         if (!isPlayback) {
-            const now = Date.now();
-            const start = startDate ? new Date(startDate).getTime() : now;
-            const elapsedHours = Math.max(0, (now - start) / (1000 * 60 * 60));
-            setPlaybackHours(elapsedHours);
+            setPlaybackHours(0);
         }
         setIsPlayback(prev => !prev);
     };

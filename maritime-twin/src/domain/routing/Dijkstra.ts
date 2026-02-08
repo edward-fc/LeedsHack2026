@@ -1,6 +1,7 @@
 import { PriorityQueue } from './PriorityQueue';
 import { GraphIndex } from '../graph/GraphIndex';
 import { Node, Edge, RouteResult } from '../types';
+import { stitchRouteSegments } from '../../utils/geo';
 
 export class DijkstraRouter {
     graph: GraphIndex;
@@ -50,11 +51,14 @@ export class DijkstraRouter {
                     }
                 }
                 path.push(this.graph.nodes[startNodeId]);
+                const orderedEdges = edges.reverse();
+                const startNode = this.graph.nodes[startNodeId];
+                const startAnchor: [number, number] = [startNode.lon, startNode.lat];
                 return {
                     pathNodeIds: path.reverse().map(n => n.id),
-                    edges: edges.reverse(),
+                    edges: orderedEdges,
                     totalDist: currentDist,
-                    segments: edges.map(e => e.geometry)
+                    segments: stitchRouteSegments(orderedEdges.map(e => e.geometry), startAnchor)
                 };
             }
 
