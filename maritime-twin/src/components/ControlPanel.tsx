@@ -5,7 +5,7 @@ interface ControlPanelProps {
     selectionMode: 'origin' | 'destination' | null;
     origin: string | null;
     destination: string | null;
-    routeStats: { dist: number; chokepoints: string[] } | null;
+    routeStats: { dist: number; chokepoints: { name: string; distance: number }[] } | null;
     onReset: () => void;
     graphStats: { ports: number; routes: number };
     startDate: string;
@@ -13,6 +13,15 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ onSelectMode, selectionMode, origin, destination, routeStats, onReset, graphStats, startDate, onStartDateChange }: ControlPanelProps) {
+    const formatETA = (distKm: number) => {
+        if (!startDate) return null;
+        const speedKmH = 40.74; // 22 knots
+        const travelHours = distKm / speedKmH;
+        const start = new Date(startDate).getTime();
+        const eta = new Date(start + travelHours * 3600 * 1000);
+        return eta.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    };
+
     return (
         <div className="absolute top-4 left-4 w-80 bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-4 z-10 border border-gray-200">
             <h1 className="text-xl font-bold flex items-center gap-2 text-slate-800">
@@ -95,9 +104,10 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
                             {/* Origin */}
                             <div className="flex items-start gap-3">
                                 <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm shrink-0 mt-0.5"></div>
-                                <div className="text-sm text-slate-700">
+                                <div className="text-sm text-slate-700 flex-1">
                                     <span className="font-semibold text-xs text-blue-600 block">ORIGIN</span>
                                     {origin || "Unknown Port"}
+                                    {startDate && <div className="text-xs text-slate-400 mt-0.5">Dep: {new Date(startDate).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
                                 </div>
                             </div>
 
@@ -105,9 +115,10 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
                             {routeStats.chokepoints.map((cp, idx) => (
                                 <div key={idx} className="flex items-start gap-3 mt-4">
                                     <div className="w-4 h-4 rounded-full bg-yellow-400 border-2 border-slate-600 shadow-sm shrink-0 mt-0.5"></div>
-                                    <div className="text-sm text-slate-700">
+                                    <div className="text-sm text-slate-700 flex-1">
                                         <span className="font-semibold text-xs text-slate-500 block">TRANSIT</span>
-                                        {cp}
+                                        {cp.name}
+                                        {startDate && <div className="text-xs text-slate-400 mt-0.5">ETA: {formatETA(cp.distance)}</div>}
                                     </div>
                                 </div>
                             ))}
@@ -115,16 +126,16 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
                             {/* Destination */}
                             <div className="flex items-start gap-3 mt-4">
                                 <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow-sm shrink-0 mt-0.5"></div>
-                                <div className="text-sm text-slate-700">
+                                <div className="text-sm text-slate-700 flex-1">
                                     <span className="font-semibold text-xs text-green-600 block">DESTINATION</span>
                                     {destination || "Unknown Port"}
+                                    {startDate && <div className="text-xs text-slate-400 mt-0.5">Arr: {formatETA(routeStats.dist)}</div>}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
 
             {/* Legend */}
             <div className="text-xs space-y-1 mt-2">
@@ -138,6 +149,6 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
             <button onClick={onReset} className="text-xs text-center text-slate-400 underline hover:text-slate-600">
                 Reset Simulation
             </button>
-        </div >
+        </div>
     );
 }
