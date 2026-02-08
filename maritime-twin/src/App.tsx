@@ -100,6 +100,12 @@ function App() {
             const distTravelled = elapsedHours * speedKmH;
 
             const position = graph.getPointAlongRoute(routeSegments, distTravelled);
+            console.log('[ship-position]', {
+                mode: 'realtime',
+                elapsedHours,
+                distTravelledKm: distTravelled,
+                position
+            });
             setShipPosition(position);
         }, 1000); // Update every second
 
@@ -124,6 +130,12 @@ function App() {
                 const wrapped = next > totalHours ? 0 : next;
                 const distTravelled = wrapped * speedKmH;
                 const position = graph.getPointAlongRoute(routeSegments, distTravelled);
+                console.log('[ship-position]', {
+                    mode: 'playback',
+                    playbackHours: wrapped,
+                    distTravelledKm: distTravelled,
+                    position
+                });
                 setShipPosition(position);
                 return wrapped;
             });

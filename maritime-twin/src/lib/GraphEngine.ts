@@ -56,6 +56,54 @@ export class MaritimeGraph {
 
     constructor() { }
 
+    private distanceKm(a: [number, number], b: [number, number]): number {
+        const R = 6371; // km
+        const dLat = (b[1] - a[1]) * Math.PI / 180;
+        const dLon = (b[0] - a[0]) * Math.PI / 180;
+        const lat1 = a[1] * Math.PI / 180;
+        const lat2 = b[1] * Math.PI / 180;
+
+        const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+
+    private stitchGeometries(edges: Edge[]): [number, number][][] {
+        const merged: [number, number][] = [];
+        const epsilonKm = 0.01; // 10 meters
+
+        for (const edge of edges) {
+            if (!edge.geometry || edge.geometry.length === 0) continue;
+
+            let geometry = edge.geometry;
+            if (merged.length > 0) {
+                const prevEnd = merged[merged.length - 1];
+                const start = geometry[0];
+                const end = geometry[geometry.length - 1];
+
+                const distToStart = this.distanceKm(prevEnd, start);
+                const distToEnd = this.distanceKm(prevEnd, end);
+                if (distToEnd < distToStart) {
+                    geometry = [...geometry].reverse();
+                }
+
+                const nextStart = geometry[0];
+                if (this.distanceKm(prevEnd, nextStart) > epsilonKm) {
+                    merged.push(nextStart);
+                }
+
+                for (let i = 0; i < geometry.length; i++) {
+                    if (i === 0 && this.distanceKm(prevEnd, geometry[0]) <= epsilonKm) continue;
+                    merged.push(geometry[i]);
+                }
+            } else {
+                merged.push(...geometry);
+            }
+        }
+
+        return merged.length ? [merged] : [];
+    }
+
     async loadGraph(url: string) {
         try {
             console.log(`Fetching graph from ${url}...`);
@@ -185,11 +233,13 @@ export class MaritimeGraph {
                     curr = prev.node;
                 }
                 path.push(this.nodes[startNodeId]);
+                const orderedPath = path.reverse();
+                const orderedEdges = edges.reverse();
                 return {
-                    path: path.reverse(),
-                    edges: edges.reverse(), // Actually order doesn't matter for display
+                    path: orderedPath,
+                    edges: orderedEdges,
                     totalDist: currentDist,
-                    segments: edges.map(e => e.geometry)
+                    segments: this.stitchGeometries(orderedEdges)
                 };
             }
 
@@ -261,6 +311,10 @@ export class MaritimeGraph {
                     Math.sin(dLonRad / 2) * Math.sin(dLonRad / 2) * Math.cos(lat1Rad) * Math.cos(lat2Rad);
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                 const segDist = R * c;
+
+                if (segDist <= 0) {
+                    continue;
+                }
 
                 if (coveredKm + segDist >= distanceKm) {
                     // Interpolate here
