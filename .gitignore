@@ -29,7 +29,6 @@ MANIFEST
 venv/
 env/
 ENV/
-.env
 .venv/
 
 # Node.js
@@ -54,8 +53,3 @@ package-lock.json # Only ignore if using yarn, but user seems to be using npm (n
 # Specific to maritime-twin (Frontend)
 maritime-twin/node_modules/
 maritime-twin/dist/
-maritime-twin/.env.local
-maritime-twin/.env.development.local
-maritime-twin/.env.test.local
-maritime-twin/.env.production.local
-maritime-twin/.env
