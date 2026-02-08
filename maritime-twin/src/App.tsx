@@ -16,7 +16,7 @@ function App() {
     const [shipPosition, setShipPosition] = useState<[number, number] | null>(null);
 
     const [pathEdgeIds, setPathEdgeIds] = useState<Set<string>>(new Set());
-    const [routeStats, setRouteStats] = useState<{ dist: number } | null>(null);
+    const [routeStats, setRouteStats] = useState<{ dist: number; chokepoints: string[] } | null>(null);
     const [refresh, setRefresh] = useState(0); // Trigger re-render for graph updates
 
     useEffect(() => {
@@ -43,8 +43,24 @@ function App() {
             const result = graph.findPath(originId, destId);
             if (result) {
                 const edgeIds = new Set(result.edges.map(e => e.lane_id));
+
+                // Extract unique chokepoints
+                const chokepoints: string[] = [];
+                result.edges.forEach(edge => {
+                    if (edge.chokepoints && edge.chokepoints.length > 0) {
+                        edge.chokepoints.forEach(cp => {
+                            // Avoid duplicates (consecutive or global? Global usually better for "Route includes X")
+                            // But if you go through Suez, then around, then Suez again (unlikely), you might want to know.
+                            // Let's just set unique for now.
+                            if (!chokepoints.includes(cp)) {
+                                chokepoints.push(cp);
+                            }
+                        });
+                    }
+                });
+
                 setPathEdgeIds(edgeIds);
-                setRouteStats({ dist: result.totalDist });
+                setRouteStats({ dist: result.totalDist, chokepoints });
                 setRouteSegments(result.segments);
             } else {
                 setPathEdgeIds(new Set());

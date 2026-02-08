@@ -5,7 +5,7 @@ interface ControlPanelProps {
     selectionMode: 'origin' | 'destination' | null;
     origin: string | null;
     destination: string | null;
-    routeStats: { dist: number } | null;
+    routeStats: { dist: number; chokepoints: string[] } | null;
     onReset: () => void;
     graphStats: { ports: number; routes: number };
     startDate: string;
@@ -81,8 +81,50 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
                         </div>
                         <div className="text-xs text-slate-400 mt-1">{(routeStats.dist).toFixed(0)} km @ 22 knots</div>
                     </div>
+
+                    {/* Route Plan / Itinerary */}
+                    <div className="bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <RouteIcon className="w-3 h-3 text-slate-400" />
+                            <div className="text-xs font-semibold uppercase text-slate-400">Route Plan</div>
+                        </div>
+                        <div className="flex flex-col gap-0 relative">
+                            {/* Vertical Line */}
+                            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-slate-200 -z-10"></div>
+
+                            {/* Origin */}
+                            <div className="flex items-start gap-3">
+                                <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm shrink-0 mt-0.5"></div>
+                                <div className="text-sm text-slate-700">
+                                    <span className="font-semibold text-xs text-blue-600 block">ORIGIN</span>
+                                    {origin || "Unknown Port"}
+                                </div>
+                            </div>
+
+                            {/* Chokepoints */}
+                            {routeStats.chokepoints.map((cp, idx) => (
+                                <div key={idx} className="flex items-start gap-3 mt-4">
+                                    <div className="w-4 h-4 rounded-full bg-yellow-400 border-2 border-slate-600 shadow-sm shrink-0 mt-0.5"></div>
+                                    <div className="text-sm text-slate-700">
+                                        <span className="font-semibold text-xs text-slate-500 block">TRANSIT</span>
+                                        {cp}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Destination */}
+                            <div className="flex items-start gap-3 mt-4">
+                                <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow-sm shrink-0 mt-0.5"></div>
+                                <div className="text-sm text-slate-700">
+                                    <span className="font-semibold text-xs text-green-600 block">DESTINATION</span>
+                                    {destination || "Unknown Port"}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Legend */}
             <div className="text-xs space-y-1 mt-2">
@@ -96,6 +138,6 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
             <button onClick={onReset} className="text-xs text-center text-slate-400 underline hover:text-slate-600">
                 Reset Simulation
             </button>
-        </div>
+        </div >
     );
 }
