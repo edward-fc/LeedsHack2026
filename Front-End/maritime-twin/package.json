@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/index.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "setup:ml": "python -m pip install -r ../../ML_delay/backend/requirements.txt",
+    "dev:ml": "cd ../../ML_delay/backend && python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000",
+    "dev:all": "concurrently -k --names \"web,gemini,ml\" -c \"cyan,magenta,green\" \"npm run dev\" \"npm run server\" \"npm run dev:ml\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

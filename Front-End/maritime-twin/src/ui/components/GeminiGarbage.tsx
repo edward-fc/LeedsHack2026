@@ -139,31 +139,33 @@ export function GeminiGarbage({ hoveredChokepoint = null }: GeminiGarbageProps) 
                 </div>
             )}
 
-            <button
-                onClick={() => setOpen((prev) => !prev)}
-                className="group flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-gradient-to-br from-sky-200 via-blue-300 to-indigo-300 shadow-xl transition-transform hover:scale-105"
-                aria-label="Toggle Gemini assistant"
-                title="Gemini"
-            >
-                <svg
-                    width="26"
-                    height="26"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="text-slate-700"
-                    aria-hidden="true"
+            {!open && (
+                <button
+                    onClick={() => setOpen((prev) => !prev)}
+                    className="group flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-gradient-to-br from-sky-200 via-blue-300 to-indigo-300 shadow-xl transition-transform hover:scale-105"
+                    aria-label="Toggle Gemini assistant"
+                    title="Gemini"
                 >
-                    <path
-                        d="M12 3.5L13.9 8.1L18.5 10L13.9 11.9L12 16.5L10.1 11.9L5.5 10L10.1 8.1L12 3.5Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M18.7 13.2L19.6 15.4L21.8 16.3L19.6 17.2L18.7 19.4L17.8 17.2L15.6 16.3L17.8 15.4L18.7 13.2Z"
-                        fill="currentColor"
-                    />
-                </svg>
-            </button>
+                    <svg
+                        width="26"
+                        height="26"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="text-slate-700"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M12 3.5L13.9 8.1L18.5 10L13.9 11.9L12 16.5L10.1 11.9L5.5 10L10.1 8.1L12 3.5Z"
+                            fill="currentColor"
+                        />
+                        <path
+                            d="M18.7 13.2L19.6 15.4L21.8 16.3L19.6 17.2L18.7 19.4L17.8 17.2L15.6 16.3L17.8 15.4L18.7 13.2Z"
+                            fill="currentColor"
+                        />
+                    </svg>
+                </button>
+            )}
         </div>
     );
 }
