@@ -1,22 +1,48 @@
 import { useRef, useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MaritimeGraph } from '../lib/GraphEngine';
+import { useAppStore } from '../../state/AppStore';
+import { useWeatherLayer } from '../../map/hooks/useWeatherLayer';
 
-interface MapViewProps {
-    graph: MaritimeGraph;
-    onPortClick: (portId: string) => void;
-    onChokepointClick: (name: string) => void;
-    pathEdgeIds: Set<string>;
-    originId: string | null;
-    destId: string | null;
-    shipPosition: [number, number] | null;
-}
+export function MapView() {
+    const {
+        graph,
+        togglePort,
+        toggleChokepoint,
+        pathEdgeIds,
+        originId,
+        destId,
+        shipPosition,
+        weatherConfig,
+        selectionMode,
+        setSelectionMode,
+        setOriginId,
+        setDestId
+    } = useAppStore();
 
-export function MapView({ graph, onPortClick, onChokepointClick, pathEdgeIds, originId, destId, shipPosition }: MapViewProps) {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null); // Use maplibre types
     const [loaded, setLoaded] = useState(false);
+
+    // Weather Layer Hook
+    useWeatherLayer(map.current, weatherConfig);
+
+    // Handlers
+    const onPortClick = (portId: string) => {
+        if (selectionMode === 'origin') {
+            setOriginId(portId);
+            setSelectionMode(null);
+        } else if (selectionMode === 'destination') {
+            setDestId(portId);
+            setSelectionMode(null);
+        } else {
+            togglePort(portId);
+        }
+    };
+
+    const onChokepointClick = (name: string) => {
+        toggleChokepoint(name);
+    };
 
     // Refs to keep latest handlers available to MapLibre listeners without cleanup/rebind overhead
     const onPortClickRef = useRef(onPortClick);
@@ -40,6 +66,17 @@ export function MapView({ graph, onPortClick, onChokepointClick, pathEdgeIds, or
 
         map.current.on('load', () => {
             setLoaded(true);
+        });
+
+        // Error Handling
+        map.current.on('error', (e) => {
+            if (e && e.error && e.error.status === 401) {
+                console.error("Map Resource 401 Error:", e.error);
+                // Check if it's OpenWeatherMap
+                if (e.error.url && e.error.url.includes('openweathermap')) {
+                    alert("OpenWeatherMap Error: The API Key is invalid or not authorized for Tile layers. Please check your .env file or wait for the key to activate.");
+                }
+            }
         });
 
         // Cleanup function for React Strict Mode

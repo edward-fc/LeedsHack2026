@@ -72,3 +72,14 @@ export interface AppState {
     route: RouteResult | null;
     simulation: SimulationState;
 }
+
+export type WeatherProvider = 'openweathermap' | 'rainviewer';
+export type WeatherType = 'clouds' | 'precipitation' | 'wind' | 'temp';
+
+export interface WeatherConfig {
+    visible: boolean;
+    provider: WeatherProvider;
+    type: WeatherType;
+    opacity: number;
+}
+

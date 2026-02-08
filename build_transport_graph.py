@@ -91,7 +91,7 @@ def build_graph():
     
     logging.info(f"Processing {len(lanes_geo)} lane segments...")
     
-    SNAP_TOLERANCE_DEG = 0.02  # ~2km (Visual precision)
+    SNAP_TOLERANCE_DEG = 0.2  # ~2km (Visual precision)
     PROXIMITY_RADIUS_DEG = 0.5 # ~55km (Connectivity radius for new edges)
 
     # Spatial Index for snapping
