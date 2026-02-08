@@ -150,6 +150,25 @@ export function getPointAlongRoute(segments: [number, number][][], distanceKm: n
 }
 
 /**
+ * Calculates total route length (km) based on geometry segments.
+ */
+export function getRouteLengthKm(segments: [number, number][][]): number {
+    if (!segments || segments.length === 0) return 0;
+
+    let totalKm = 0;
+    for (const segment of segments) {
+        for (let i = 0; i < segment.length - 1; i++) {
+            const p1 = segment[i];
+            const p2 = segment[i + 1];
+            const segDist = haversineDistance(p1[1], p1[0], p2[1], p2[0]);
+            if (segDist > 0) totalKm += segDist;
+        }
+    }
+
+    return totalKm;
+}
+
+/**
  * Unwraps longitude coordinates to allow continuous rendering across the antimeridian.
  * 
  * @param coords Array of [lon, lat] coordinates

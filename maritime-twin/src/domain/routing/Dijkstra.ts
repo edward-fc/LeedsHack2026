@@ -52,14 +52,15 @@ export class DijkstraRouter {
                     }
                 }
                 path.push(this.graph.nodes[startNodeId]);
+                const orderedPath = path.reverse();
                 const orderedEdges = edges.reverse();
                 const startNode = this.graph.nodes[startNodeId];
                 const startAnchor: [number, number] = [startNode.lon, startNode.lat];
                 return {
-                    pathNodeIds: path.reverse().map(n => n.id),
-                    edges: edges.reverse(),
+                    pathNodeIds: orderedPath.map(n => n.id),
+                    edges: orderedEdges,
                     totalDist: currentDist,
-                    segments: edges.map(e => e.geometry)
+                    segments: stitchRouteSegments(orderedEdges.map(e => e.geometry), startAnchor)
                 };
             }
 
