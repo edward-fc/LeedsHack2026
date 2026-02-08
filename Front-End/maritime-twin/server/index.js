@@ -23,11 +23,6 @@ app.post("/api/gemini", async (req, res) => {
       input: prompt,
     });
 
-    console.log(
-      "Gemini interaction response:",
-      JSON.stringify(interaction, null, 2),
-    );
-
     const outputs = interaction.outputs || [];
     const lastOutput = outputs[outputs.length - 1];
     const text = lastOutput?.text || "";
