@@ -34,7 +34,10 @@ export class DijkstraRouter {
         const visited = new Set<string>();
 
         while (!pq.isEmpty()) {
-            const { element: innerCurrentNodeId, priority: currentDist } = pq.dequeue();
+            const { element: innerCurrentNodeId } = pq.dequeue();
+            const currentDist = distances[innerCurrentNodeId];
+
+            if (currentDist === undefined) continue;
 
             if (innerCurrentNodeId === endNodeId) {
                 // Reconstruct path
@@ -58,7 +61,7 @@ export class DijkstraRouter {
                 return {
                     pathNodeIds: path.reverse().map(n => n.id),
                     edges: edges.reverse(),
-                    totalDist: currentDist,
+                    totalDist: distances[endNodeId],
                     segments: edges.map(e => e.geometry)
                 };
             }
