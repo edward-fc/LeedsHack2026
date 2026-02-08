@@ -23,7 +23,7 @@ export function ControlPanel({ onSelectMode, selectionMode, origin, destination,
     };
 
     return (
-        <div className="absolute top-4 left-4 w-80 bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-4 z-10 border border-gray-200">
+        <div className="absolute top-4 left-4 w-[calc(100vw-2rem)] max-w-80 max-h-[calc(100vh-2rem)] overflow-y-auto bg-white/90 backdrop-blur-md shadow-xl rounded-xl p-4 flex flex-col gap-4 z-10 border border-gray-200">
             <h1 className="text-xl font-bold flex items-center gap-2 text-slate-800">
                 <Anchor className="w-5 h-5 text-blue-600" />
                 Maritime Digital Twin
