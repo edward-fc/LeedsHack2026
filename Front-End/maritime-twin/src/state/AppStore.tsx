@@ -28,6 +28,9 @@ interface AppState {
     chokepointDelays: Record<string, number>;
     chokepointDelayInfo: Record<string, ChokepointDelayInfo>;
 
+    // Hover
+    hoveredChokepoint: string | null;
+
     // Weather
     weatherConfig: WeatherConfig;
 
@@ -53,6 +56,7 @@ interface AppState {
     setWeatherConfig: (config: WeatherConfig) => void;
     setPanamaCanalDelay: (prediction: DelayPrediction | null) => void;
     setSuezCanalDelay: (prediction: DelayPrediction | null) => void;
+    setHoveredChokepoint: (name: string | null) => void;
     reset: () => void;
 }
 
@@ -71,6 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [startDate, setStartDate] = useState<string>("");
     const [chokepointDelays, setChokepointDelays] = useState<Record<string, number>>({});
     const [chokepointDelayInfo, setChokepointDelayInfo] = useState<Record<string, ChokepointDelayInfo>>({});
+    const [hoveredChokepoint, setHoveredChokepoint] = useState<string | null>(null);
     const [weatherConfig, setWeatherConfig] = useState<WeatherConfig>({
         visible: false,
         provider: 'openweathermap',
@@ -358,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDestId(null);
         setStartDate("");
         setChokepointDelays({});
+        setHoveredChokepoint(null);
         setRefresh(prev => prev + 1);
     };
 
@@ -376,6 +382,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         shipPosition,
         chokepointDelays,
         chokepointDelayInfo,
+        hoveredChokepoint,
         weatherConfig,
         setSelectionMode,
         setOriginId,
@@ -390,6 +397,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPanamaCanalDelay,
         suezCanalDelay,
         setSuezCanalDelay,
+        setHoveredChokepoint,
         reset,
         isPlayback,
         togglePlayback

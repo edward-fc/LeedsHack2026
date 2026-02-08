@@ -9,7 +9,7 @@ import { usePanamaWeather } from '../../map/hooks/usePanamaWeather';
 import { Loader2 } from 'lucide-react';
 
 export function MainLayout() {
-    const { isGraphLoaded, setPanamaCanalDelay, setSuezCanalDelay } = useAppStore();
+    const { isGraphLoaded, setPanamaCanalDelay, setSuezCanalDelay, hoveredChokepoint } = useAppStore();
     const { weather } = usePanamaWeather();
 
     return (
@@ -28,7 +28,7 @@ export function MainLayout() {
                 <DelayControls weather={weather} onPredictionChange={setPanamaCanalDelay} />
                 <SuezDelayControls onPredictionChange={setSuezCanalDelay} />
             </div>
-            <GeminiGarbage />
+            <GeminiGarbage hoveredChokepoint={hoveredChokepoint} />
 
             {/* Loading State */}
             {!isGraphLoaded && (
