@@ -16,7 +16,7 @@ interface DelayControlsProps {
 }
 
 export function DelayControls({ weather, onPredictionChange }: DelayControlsProps) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [prediction, setPrediction] = useState<DelayPrediction | null>(null);

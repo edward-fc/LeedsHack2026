@@ -14,7 +14,7 @@ interface SuezDelayControlsProps {
 }
 
 export function SuezDelayControls({ onPredictionChange }: SuezDelayControlsProps) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [prediction, setPrediction] = useState<DelayPrediction | null>(null);
     const [weather, setWeather] = useState<SuezWeather | null>(null);
